@@ -191,3 +191,7 @@ unexpected template inputs:
 required_variables:
   - generated_at
 ```
+
+## 📌 Citation
+
+Please cite the `promptkit` tool itself following [CITATION.cff](./CITATION.cff) file.
