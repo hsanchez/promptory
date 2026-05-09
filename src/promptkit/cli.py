@@ -22,9 +22,9 @@ def init(prompts_dir: Path = Path("prompts")) -> None:
 
 @app.command()
 def draft(prompts_dir: Path = Path("prompts")) -> None:
-  """Create drafts from current prompts."""
+  """Create drafts from the current release."""
   PromptManager(prompts_dir).draft_from_current()
-  console.print("[green]Drafts created from current prompts.[/green]")
+  console.print("[green]Drafts created from the current release.[/green]")
 
 
 @app.command()
@@ -74,16 +74,16 @@ def release(
 
 @app.command()
 def diff(prompts_dir: Path = Path("prompts")) -> None:
-  """Show diff between current prompts and rendered drafts."""
+  """Show diff between the current release and rendered drafts."""
   output = PromptManager(prompts_dir).diff()
   console.print(output or "[green]No prompt changes.[/green]")
 
 
 @app.command()
 def rollback(version: str, prompts_dir: Path = Path("prompts")) -> None:
-  """Set current prompts to an existing vault version."""
+  """Point current.json at an existing release."""
   PromptManager(prompts_dir).rollback(version)
-  console.print(f"[green]Rolled back current prompts to {version}.[/green]")
+  console.print(f"[green]Pointed current.json at {version}.[/green]")
 
 
 def main() -> None:

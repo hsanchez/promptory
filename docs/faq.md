@@ -1,1 +1,55 @@
 # FAQ
+
+## Why not just use Git?
+
+Git records changes, but production prompt workflows also need rendered release
+artifacts, metadata, checksums, and a clear pointer to the active version.
+
+## What is the difference between drafts and versions?
+
+`drafts/` contains editable Jinja templates. `versions/` contains rendered YAML
+artifacts created by PromptKit.
+
+## Are versions editable?
+
+No. Treat each directory under `versions/` as immutable after creation. Make a
+new draft change and release a new version instead.
+
+## Why is the directory named versions instead of .vault?
+
+Release artifacts are part of the project state users should review and commit.
+A visible `versions/` directory makes that workflow explicit.
+
+## Does PromptKit store templates or rendered prompts?
+
+Drafts are templates. Versions are rendered YAML prompts.
+
+## What prompt file types are supported?
+
+Managed prompt files are `.yaml` files. Each declared file has a matching draft
+template with `.j2` appended, such as `system.yaml.j2`.
+
+## How are Jinja variables handled?
+
+PromptKit renders with Jinja `StrictUndefined`. Missing variables fail instead
+of rendering as empty strings.
+
+## Are Jinja defaults considered required variables?
+
+No. Variables that use the `default` filter are optional. Other undeclared
+variables must be listed in `required_variables` and supplied by the caller.
+
+## How does rollback work?
+
+Rollback updates `current.json` to point at an existing release. It does not
+rewrite files inside `versions/`.
+
+## Should generated versions be committed?
+
+Yes. Commit `promptspec.yaml`, `drafts/`, `versions/`, and `current.json` so code
+review and CI can inspect the exact prompt artifacts.
+
+## When should I use a hosted prompt platform instead?
+
+Use a hosted prompt platform when non-technical users need a UI, many teams need
+shared governance, or prompt metadata no longer fits a repository workflow.

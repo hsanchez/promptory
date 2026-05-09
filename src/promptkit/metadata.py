@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -14,8 +14,8 @@ def sha256_file(path: Path) -> str:
   return sha256(path.read_bytes()).hexdigest()
 
 
-def write_metadata(release_dir: Path, version: str, files: list[str]) -> dict[str, Any]:
-  """Write metadata.json for a release or current directory."""
+def write_metadata(release_dir: Path, version: str, files: tuple[str, ...]) -> dict[str, Any]:
+  """Write metadata.json for a release."""
   checksums = {
     file_name: sha256_file(release_dir / file_name)
     for file_name in files
@@ -23,7 +23,8 @@ def write_metadata(release_dir: Path, version: str, files: list[str]) -> dict[st
   }
   metadata = {
     "version": version,
-    "created_at": datetime.now(timezone.utc).isoformat(),
+    "created_at": datetime.now(UTC).isoformat(),
+    "files": list(files),
     "checksums": checksums,
   }
   (release_dir / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")

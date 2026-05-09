@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 from promptkit.config import PromptSpec, default_spec, load_spec
 from promptkit.diff import diff_current_against_drafts
+from promptkit.errors import PromptReleaseError
 from promptkit.lint import lint_prompts
-from promptkit.release import create_release
+from promptkit.release import BumpType, create_release, read_current_version, write_current_pointer
 from promptkit.render import template_name_for
 
 
 class PromptManager:
-  """Manage prompt drafts, current prompts, and immutable vault releases."""
+  """Manage prompt drafts and immutable prompt releases."""
 
   def __init__(self, prompts_dir: Path = Path("prompts")) -> None:
     self.prompts_dir = prompts_dir
@@ -24,22 +25,16 @@ class PromptManager:
     """Initialize prompt directories and promptspec.yaml."""
     self.prompts_dir.mkdir(exist_ok=True)
     (self.prompts_dir / "drafts").mkdir(exist_ok=True)
-    (self.prompts_dir / "current").mkdir(exist_ok=True)
-    (self.prompts_dir / ".vault").mkdir(exist_ok=True)
+    (self.prompts_dir / "versions").mkdir(exist_ok=True)
 
     spec_path = self.prompts_dir / "promptspec.yaml"
     if not spec_path.exists():
-      spec_path.write_text(
-        yaml.safe_dump(default_spec(self.prompts_dir), sort_keys=False)
-      )
+      spec_path.write_text(yaml.safe_dump(default_spec(), sort_keys=False))
 
     draft = self.prompts_dir / "drafts" / "system.yaml.j2"
     if not draft.exists():
       draft.write_text(
-        "model: gpt-5.5\n"
-        "temperature: 0.2\n"
-        "system_prompt: |\n"
-        "  You are a helpful assistant.\n"
+        "model: gpt-5.5\ntemperature: 0.2\nsystem_prompt: |\n  You are a helpful assistant.\n"
       )
 
   def spec(self) -> PromptSpec:
@@ -47,13 +42,20 @@ class PromptManager:
     return load_spec(self.prompts_dir)
 
   def draft_from_current(self) -> None:
-    """Create drafts from current prompts."""
+    """Create drafts from the current release."""
     spec = self.spec()
     spec.drafts_dir.mkdir(parents=True, exist_ok=True)
+    current_version = read_current_version(spec)
+    if current_version is None:
+      raise PromptReleaseError("No current release exists")
+    current_dir = spec.versions_dir / current_version
+    if not current_dir.is_dir():
+      raise PromptReleaseError(f"Unknown release: {current_version}")
 
     for file_name in spec.files:
-      current_path = spec.current_dir / file_name
+      current_path = current_dir / file_name
       draft_path = spec.drafts_dir / template_name_for(file_name)
+      draft_path.parent.mkdir(parents=True, exist_ok=True)
       if current_path.exists():
         draft_path.write_text(current_path.read_text())
       elif not draft_path.exists():
@@ -63,21 +65,16 @@ class PromptManager:
     """Lint prompts."""
     return lint_prompts(self.spec())
 
-  def release(self, bump: str = "patch") -> str:
+  def release(
+    self, bump: str | BumpType = BumpType.PATCH, variables: dict[str, Any] | None = None
+  ) -> str:
     """Create a release."""
-    return create_release(self.spec(), bump=bump)
+    return create_release(self.spec(), bump=bump, variables=variables)
 
   def diff(self) -> str:
     """Diff current prompts against rendered drafts."""
     return diff_current_against_drafts(self.spec())
 
   def rollback(self, version: str) -> None:
-    """Set current prompts to a prior vault version."""
-    spec = self.spec()
-    source = spec.vault_dir / version
-    if not source.exists():
-      raise FileNotFoundError(f"Unknown release: {version}")
-
-    if spec.current_dir.exists():
-      shutil.rmtree(spec.current_dir)
-    shutil.copytree(source, spec.current_dir)
+    """Point current.json at an existing release."""
+    write_current_pointer(self.spec(), version)

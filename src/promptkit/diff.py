@@ -3,26 +3,30 @@
 from __future__ import annotations
 
 from difflib import unified_diff
-from pathlib import Path
 
 from promptkit.config import PromptSpec
+from promptkit.release import read_current_version
 from promptkit.render import render_prompts
 
 
 def diff_current_against_drafts(spec: PromptSpec) -> str:
-  """Return a unified diff between current rendered prompts and drafts."""
+  """Return a unified diff between the current release and rendered drafts."""
   rendered = render_prompts(spec)
   chunks: list[str] = []
+  current_version = read_current_version(spec)
+  current_dir = spec.versions_dir / current_version if current_version else None
 
   for file_name, draft_content in rendered.items():
-    current_path = spec.current_dir / file_name
-    current_content = current_path.read_text() if current_path.exists() else ""
+    current_path = current_dir / file_name if current_dir is not None else None
+    current_content = (
+      current_path.read_text() if current_path is not None and current_path.exists() else ""
+    )
 
     chunks.extend(
       unified_diff(
         current_content.splitlines(keepends=True),
         draft_content.splitlines(keepends=True),
-        fromfile=f"current/{file_name}",
+        fromfile=f"{current_version or 'current'}/{file_name}",
         tofile=f"drafts/{file_name}",
       )
     )
