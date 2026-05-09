@@ -15,3 +15,7 @@ class PromptRenderError(PromptKitError):
 
 class PromptReleaseError(PromptKitError):
   """Raised when a release cannot be created."""
+
+
+class PromptLoadError(PromptKitError):
+  """Raised when a released prompt cannot be loaded."""

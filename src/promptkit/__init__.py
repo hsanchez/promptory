@@ -1,5 +1,7 @@
 """PromptKit: Git-based prompt versioning."""
 
-__all__ = ["__version__"]
+from promptkit.store import PromptStore
+
+__all__ = ["PromptStore", "__version__"]
 
 __version__ = "0.1.0"

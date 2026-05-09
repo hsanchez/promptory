@@ -29,6 +29,19 @@ Drafts are templates. Versions are rendered YAML prompts.
 Managed prompt files are `.yaml` files. Each declared file has a matching draft
 template with `.j2` appended, such as `system.yaml.j2`.
 
+## Can I track multiple prompts?
+
+Yes. Add each rendered `.yaml` file to `promptspec.yaml`:
+
+```yaml
+files:
+  - system.yaml
+  - input_guardrail.yaml
+  - output_guardrail.yaml
+```
+
+PromptKit renders each matching draft template into the same release directory.
+
 ## How are Jinja variables handled?
 
 PromptKit renders with Jinja `StrictUndefined`. Missing variables fail instead
@@ -43,6 +56,25 @@ variables must be listed in `required_variables` and supplied by the caller.
 
 Rollback updates `current.json` to point at an existing release. It does not
 rewrite files inside `versions/`.
+
+## How does my app use released prompts?
+
+Use `PromptStore`:
+
+```python
+from promptkit import PromptStore
+
+store = PromptStore("prompts")
+system = store.load("system.yaml")
+```
+
+`PromptStore` reads `current.json`, loads rendered YAML from
+`versions/<version>/`, and rejects files not declared in `promptspec.yaml`.
+
+## Should my app read from drafts?
+
+No. `drafts/` can contain unrendered Jinja variables and work-in-progress
+changes. Runtime code should read `versions/<version>/`.
 
 ## Should generated versions be committed?
 
