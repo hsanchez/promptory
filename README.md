@@ -53,6 +53,8 @@ uv sync
 uv run prompt init
 ```
 
+For a full walkthrough, see [the tutorial](docs/tutorial.md).
+
 The consuming repo keeps the prompt state:
 
 ```text
