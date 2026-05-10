@@ -50,6 +50,9 @@ A project can track one prompt file or many prompt files. Every entry in
 5. Write rendered YAML files and `metadata.json`.
 6. Update `current.json` to point at the new release.
 
+Release-time variables flow through `PromptManager.release(variables=...)`.
+Rendered releases contain resolved YAML; runtime loading does not render Jinja.
+
 If writing the release fails, PromptKit removes the partially-created release
 directory.
 

@@ -200,6 +200,48 @@ required_variables:
   - generated_at
 ```
 
+## Release With Variables From Python
+
+The CLI does not accept release variables yet. Use Python when a draft has
+required Jinja variables:
+
+```yaml
+# prompts/drafts/prompt.yaml.j2
+message: |
+  Hello {{ user_name }}, this message has been generated using Jinja2 templating!
+  Generated at {{ generation_time }}.
+```
+
+```yaml
+# prompts/promptspec.yaml
+files:
+  - prompt.yaml
+required_variables:
+  - user_name
+  - generation_time
+max_file_bytes: 100000
+```
+
+Release-time code renders the draft into `versions/<version>/prompt.yaml`:
+
+```python
+from promptkit import PromptStore
+from promptkit.manager import PromptManager
+
+manager = PromptManager("prompts")
+version = manager.release(
+  variables={
+    "user_name": "Alice",
+    "generation_time": "2026-05-09T12:00:00Z",
+  }
+)
+
+prompt = PromptStore("prompts").load("prompt.yaml", version=version)
+print(prompt["message"])
+```
+
+`PromptStore` loads rendered YAML. It does not render Jinja at runtime.
+
 ## Contributing
 
 Open an issue before sending a pull request for non-trivial changes. All

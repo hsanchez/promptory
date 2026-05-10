@@ -52,6 +52,26 @@ of rendering as empty strings.
 No. Variables that use the `default` filter are optional. Other undeclared
 variables must be listed in `required_variables` and supplied by the caller.
 
+## Can runtime code pass variables into prompts?
+
+No. Runtime code uses `PromptStore`, which loads rendered YAML from a release.
+It does not render Jinja.
+
+Use `PromptManager.release(variables=...)` before runtime:
+
+```python
+from promptkit.manager import PromptManager
+
+version = PromptManager("prompts").release(
+  variables={
+    "user_name": "Alice",
+    "generation_time": "2026-05-09T12:00:00Z",
+  }
+)
+```
+
+The CLI does not accept release variables yet.
+
 ## How does rollback work?
 
 Rollback updates `current.json` to point at an existing release. It does not
