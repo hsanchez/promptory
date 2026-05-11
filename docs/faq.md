@@ -117,6 +117,30 @@ Or use `PromptStore`:
 versions = store.list_versions()
 ```
 
+## Can I use curl with the registry service?
+
+Yes. Start the service:
+
+```bash
+uv run prompt serve --port 8000
+```
+
+Then call the JSON endpoints:
+
+```bash
+curl http://localhost:8000/versions
+curl http://localhost:8000/versions/current
+curl http://localhost:8000/prompts
+curl http://localhost:8000/prompts/system.yaml
+curl "http://localhost:8000/prompts/system.yaml?version=v0.1.0"
+```
+
+Use `python -m json.tool` for readable output:
+
+```bash
+curl -s http://localhost:8000/prompts | python -m json.tool
+```
+
 ## Should my app read from drafts?
 
 No. `drafts/` can contain unrendered Jinja variables and work-in-progress

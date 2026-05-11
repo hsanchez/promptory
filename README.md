@@ -179,6 +179,33 @@ messages = [
 ]
 ```
 
+## Prompt Registry Service (`serve`)
+
+To facilitate collaboration across R&D teams (especially those using Go, TypeScript, or other non-Python languages), you can serve your versioned prompts as a REST API.
+
+Install the optional service dependencies:
+
+```toml
+[dependency-groups]
+dev = [
+  "promptkit[serve] @ git+https://github.com/hsanchez/promptkit.git",
+]
+```
+
+Start the registry service:
+
+```bash
+uv run prompt serve --port 8000
+```
+
+The service provides a JSON API for discovery and consumption:
+
+- `GET /versions`: List all available semantic versions.
+- `GET /versions/current`: Get the active version string.
+- `GET /prompts`: Get all rendered prompts for the current version.
+- `GET /prompts/{name}`: Get a specific rendered prompt.
+    - Query Param: `?version=v0.1.0` (optional).
+
 ## Template Rules
 
 PromptKit renders drafts with Jinja `StrictUndefined`, so missing variables fail

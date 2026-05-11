@@ -78,3 +78,32 @@ version directories sorted by semantic version.
 
 Future deployment integrations should live outside the core release path unless
 they preserve the same file-based artifacts and pointer model.
+
+## Registry Service
+
+`prompt serve` starts an optional FastAPI service for non-Python consumers. The
+service is a read-only HTTP wrapper around `PromptStore`; it does not render
+drafts, create releases, mutate `current.json`, or deploy prompts.
+
+The server dependencies live behind the `serve` extra:
+
+```toml
+promptkit[serve]
+```
+
+The prompts directory is configured with `PROMPTKIT_PROMPTS_DIR`. The CLI sets
+this environment variable from `--prompts-dir` before launching Uvicorn.
+
+Endpoints:
+
+- `GET /` returns service metadata.
+- `GET /versions` lists valid semantic release directories.
+- `GET /versions/current` returns the active version from `current.json`.
+- `GET /prompts` returns all rendered prompts for the active or requested
+  version.
+- `GET /prompts/{name:path}` returns one rendered prompt, including nested
+  prompt paths such as `agents/support/system.yaml`.
+
+The service maps `PromptLoadError` to 404 and prompt specification errors to
+client or server errors depending on whether the request supplied invalid prompt
+input or the repository configuration is invalid.

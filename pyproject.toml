@@ -25,6 +25,12 @@ dependencies = [
   "rich>=13.0.0",
 ]
 
+[project.optional-dependencies]
+serve = [
+  "fastapi>=0.115.0",
+  "uvicorn>=0.30.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/hsanchez/promptkit"
 Repository = "https://github.com/hsanchez/promptkit"
@@ -32,10 +38,13 @@ Issues = "https://github.com/hsanchez/promptkit/issues"
 
 [dependency-groups]
 dev = [
+  "fastapi>=0.115.0",
+  "httpx>=0.27.0",
   "prek>=0.2.0",
   "pytest>=8.0.0",
   "ruff>=0.8.0",
   "ty>=0.0.1a1",
+  "uvicorn>=0.30.0",
 ]
 
 [project.scripts]

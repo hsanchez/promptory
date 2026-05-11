@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import importlib
+import os
 from pathlib import Path
+from typing import Any, cast
 
 import typer
 from rich.console import Console
@@ -100,6 +103,28 @@ def versions(prompts_dir: Path = Path("prompts")) -> None:
     return
   for version in available_versions:
     console.print(version)
+
+
+@app.command()
+def serve(
+  prompts_dir: Path = Path("prompts"),
+  host: str = "0.0.0.0",
+  port: int = 8000,
+  reload: bool = False,
+) -> None:
+  """Start the Prompt Registry Service."""
+  try:
+    uvicorn = cast(Any, importlib.import_module("uvicorn"))
+    importlib.import_module("promptkit.serve")
+  except ImportError:
+    console.print("[red]Registry service dependencies not found.[/red]")
+    console.print("Install PromptKit with the [bold]serve[/bold] extra.")
+    raise typer.Exit(code=1) from None
+
+  os.environ["PROMPTKIT_PROMPTS_DIR"] = str(prompts_dir)
+
+  console.print(f"[green]Starting Prompt Registry Service on {host}:{port}[/green]")
+  uvicorn.run("promptkit.serve:app", host=host, port=port, reload=reload)
 
 
 def main() -> None:
