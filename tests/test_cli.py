@@ -4,9 +4,9 @@ from types import SimpleNamespace
 import pytest
 from typer.testing import CliRunner
 
-import promptkit.cli as cli
-from promptkit.cli import app
-from promptkit.manager import PromptManager
+import promptory.cli as cli
+from promptory.cli import app
+from promptory.manager import PromptManager
 
 
 def test_diff_command_reports_no_changes(tmp_path: Path) -> None:
@@ -83,7 +83,7 @@ def test_serve_command_uses_import_string_for_reload(
   def import_module(name: str) -> object:
     if name == "uvicorn":
       return SimpleNamespace(run=run)
-    if name == "promptkit.serve":
+    if name == "promptory.serve":
       return SimpleNamespace()
     raise ImportError(name)
 
@@ -107,7 +107,7 @@ def test_serve_command_uses_import_string_for_reload(
   assert result.exit_code == 0
   assert calls == [
     {
-      "app_target": "promptkit.serve:app",
+      "app_target": "promptory.serve:app",
       "host": "127.0.0.1",
       "port": 9000,
       "reload": True,

@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from promptkit.config import PromptSpec
-from promptkit.errors import PromptRenderError
-from promptkit.render import render_prompts, required_template_variables, template_name_for
+from promptory.config import PromptSpec
+from promptory.errors import PromptRenderError
+from promptory.render import render_prompts, required_template_variables, template_name_for
 
 
 def make_spec(prompts_dir: Path, files: tuple[str, ...] = ("system.yaml",)) -> PromptSpec:

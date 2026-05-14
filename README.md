@@ -1,11 +1,11 @@
-# PromptKit
+# Promptory
 
 Hardcoded prompt strings are a liability. Enterprise prompt management tools
 are too heavy for a fast-moving R&D team. And git alone isn't enough for
 production — you need immutable artifacts, explicit configuration, and safety
 checks.
 
-PromptKit is a Git-based prompt versioning system that gives prompt changes
+Promptory is a Git-based prompt versioning system that gives prompt changes
 the same engineering discipline as code: draft, lint, render, version, and
 promote.
 
@@ -37,12 +37,12 @@ uv sync
 
 ## Use In Another Repo
 
-Install PromptKit as a dev dependency in each repo that owns prompts:
+Install Promptory as a dev dependency in each repo that owns prompts:
 
 ```toml
 [dependency-groups]
 dev = [
-  "promptkit @ git+https://github.com/hsanchez/promptkit.git",
+  "promptory @ git+https://github.com/hsanchez/promptory.git",
 ]
 ```
 
@@ -75,7 +75,7 @@ repo/
 ```
 
 Commit `prompts/drafts/`, `prompts/versions/`, `prompts/current.json`, and
-`prompts/promptspec.yaml`. PromptKit is the tool that creates release artifacts;
+`prompts/promptspec.yaml`. Promptory is the tool that creates release artifacts;
 the consuming app reads them.
 
 ## Commands
@@ -115,7 +115,7 @@ uv run prompt draft
 
 `drafts/` contains editable Jinja templates. Developers and agents work here.
 
-`versions/` contains rendered YAML release artifacts. PromptKit creates these
+`versions/` contains rendered YAML release artifacts. Promptory creates these
 directories. Treat them as immutable after creation.
 
 `current.json` points at the active release. Rollback updates this pointer.
@@ -132,7 +132,7 @@ Example:
 Applications and CI read `current.json`, then load rendered YAML files from
 `versions/<version>/`.
 
-`promptspec.yaml` declares the rendered YAML files PromptKit manages:
+`promptspec.yaml` declares the rendered YAML files Promptory manages:
 
 ```yaml
 files:
@@ -153,7 +153,7 @@ files from `drafts/` at runtime. Use `PromptStore` to load only files declared
 in `promptspec.yaml` from the active release.
 
 ```python
-from promptkit import PromptStore
+from promptory import PromptStore
 
 store = PromptStore("prompts")
 system = store.load("system.yaml")
@@ -188,7 +188,7 @@ Install the optional service dependencies:
 ```toml
 [dependency-groups]
 dev = [
-  "promptkit[serve] @ git+https://github.com/hsanchez/promptkit.git",
+  "promptory[serve] @ git+https://github.com/hsanchez/promptory.git",
 ]
 ```
 
@@ -208,7 +208,7 @@ The service provides a JSON API for discovery and consumption:
 
 ## Template Rules
 
-PromptKit renders drafts with Jinja `StrictUndefined`, so missing variables fail
+Promptory renders drafts with Jinja `StrictUndefined`, so missing variables fail
 instead of becoming empty strings.
 
 Variables using Jinja's `default` filter are optional:
@@ -254,8 +254,8 @@ max_file_bytes: 100000
 Release-time code renders the draft into `versions/<version>/prompt.yaml`:
 
 ```python
-from promptkit import PromptStore
-from promptkit.manager import PromptManager
+from promptory import PromptStore
+from promptory.manager import PromptManager
 
 manager = PromptManager("prompts")
 version = manager.release(
@@ -282,4 +282,4 @@ Apache 2.0. See [LICENSE](./LICENSE).
 
 ## Citation
 
-Please cite PromptKit following the [CITATION.cff](./CITATION.cff) file.
+Please cite Promptory following the [CITATION.cff](./CITATION.cff) file.

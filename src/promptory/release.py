@@ -9,10 +9,10 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-from promptkit.config import PromptSpec
-from promptkit.errors import PromptReleaseError
-from promptkit.metadata import write_metadata
-from promptkit.render import render_prompts
+from promptory.config import PromptSpec
+from promptory.errors import PromptReleaseError
+from promptory.metadata import write_metadata
+from promptory.render import render_prompts
 
 VERSION_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 

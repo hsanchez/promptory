@@ -1,5 +1,5 @@
 
-# Contributing to PromptKit
+# Contributing to Promptory
 
 ## Getting Started
 

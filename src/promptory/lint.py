@@ -5,8 +5,8 @@ from __future__ import annotations
 import yaml
 from jinja2.exceptions import TemplateSyntaxError
 
-from promptkit.config import PromptSpec
-from promptkit.render import required_template_variables, template_name_for
+from promptory.config import PromptSpec
+from promptory.render import required_template_variables, template_name_for
 
 
 def lint_prompts(spec: PromptSpec) -> list[str]:

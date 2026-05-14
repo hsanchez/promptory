@@ -9,8 +9,8 @@ import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, meta, nodes
 from jinja2.exceptions import TemplateError
 
-from promptkit.config import PromptSpec
-from promptkit.errors import PromptRenderError
+from promptory.config import PromptSpec
+from promptory.errors import PromptRenderError
 
 
 def template_name_for(file_name: str) -> str:

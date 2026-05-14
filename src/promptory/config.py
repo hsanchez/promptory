@@ -1,4 +1,4 @@
-"""PromptKit configuration loading."""
+"""Promptory configuration loading."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import yaml
 
-from promptkit.errors import PromptSpecError
+from promptory.errors import PromptSpecError
 
 
 @dataclass(frozen=True)

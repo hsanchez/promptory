@@ -3,11 +3,11 @@ from pathlib import Path
 
 import pytest
 
-import promptkit.release as release_module
-from promptkit.config import PromptSpec
-from promptkit.errors import PromptReleaseError
-from promptkit.manager import PromptManager
-from promptkit.release import (
+import promptory.release as release_module
+from promptory.config import PromptSpec
+from promptory.errors import PromptReleaseError
+from promptory.manager import PromptManager
+from promptory.release import (
   BumpType,
   bump_version,
   create_release,

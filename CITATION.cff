@@ -1,19 +1,19 @@
 # SPDX-FileCopyrightText: 2026 Huascar Sanchez
 #
-# This file contains citation metadata for PromptKit.
+# This file contains citation metadata for Promptory.
 # For more information visit: https://citation-file-format.github.io/
 
 cff-version: 1.2.0
-title: "PromptKit"
+title: "Promptory"
 message: "If you use this software, please cite it as below."
 type: software
 authors:
   - given-names: Huascar
     family-names: Sanchez
     email: huascar@jellyfish.mozmail.com
-repository-code: "https://github.com/hsanchez/promptkit"
-url: "https://github.com/hsanchez/promptkit"
-abstract: "PromptKit: a Git-based prompt versioning system."
+repository-code: "https://github.com/hsanchez/promptory"
+url: "https://github.com/hsanchez/promptory"
+abstract: "Promptory: a Git-based prompt versioning system."
 keywords:
   - prompt-versioning
   - git

@@ -7,9 +7,9 @@ from typing import Any
 
 import yaml
 
-from promptkit.config import PromptSpec, load_spec, validate_prompt_file_name
-from promptkit.errors import PromptLoadError, PromptReleaseError
-from promptkit.release import list_versions, normalize_version, read_current_version
+from promptory.config import PromptSpec, load_spec, validate_prompt_file_name
+from promptory.errors import PromptLoadError, PromptReleaseError
+from promptory.release import list_versions, normalize_version, read_current_version
 
 
 class PromptStore:

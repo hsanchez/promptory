@@ -1,4 +1,4 @@
-"""PromptKit CLI."""
+"""Promptory CLI."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ import typer
 from rich.console import Console
 from rich.syntax import Syntax
 
-from promptkit.manager import PromptManager
-from promptkit.store import PromptStore
+from promptory.manager import PromptManager
+from promptory.store import PromptStore
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
@@ -22,7 +22,7 @@ console = Console()
 def init(prompts_dir: Path = Path("prompts")) -> None:
   """Initialize prompt directories."""
   PromptManager(prompts_dir).init()
-  console.print("[green]Initialized PromptKit prompt structure.[/green]")
+  console.print("[green]Initialized Promptory prompt structure.[/green]")
 
 
 @app.command()
@@ -115,16 +115,16 @@ def serve(
   """Start the Prompt Registry Service."""
   try:
     uvicorn = cast(Any, importlib.import_module("uvicorn"))
-    importlib.import_module("promptkit.serve")
+    importlib.import_module("promptory.serve")
   except ImportError:
     console.print("[red]Registry service dependencies not found.[/red]")
-    console.print("Install PromptKit with the [bold]serve[/bold] extra.")
+    console.print("Install Promptory with the [bold]serve[/bold] extra.")
     raise typer.Exit(code=1) from None
 
-  os.environ["PROMPTKIT_PROMPTS_DIR"] = str(prompts_dir)
+  os.environ["PROMPTORY_PROMPTS_DIR"] = str(prompts_dir)
 
   console.print(f"[green]Starting Prompt Registry Service on {host}:{port}[/green]")
-  uvicorn.run("promptkit.serve:app", host=host, port=port, reload=reload)
+  uvicorn.run("promptory.serve:app", host=host, port=port, reload=reload)
 
 
 def main() -> None:

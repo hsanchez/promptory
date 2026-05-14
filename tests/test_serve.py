@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from promptkit.manager import PromptManager
-from promptkit.serve import app
+from promptory.manager import PromptManager
+from promptory.serve import app
 
 
 def make_client() -> TestClient:
@@ -33,13 +33,13 @@ def setup_release(tmp_path: Path, files: dict[str, str] | None = None) -> Prompt
 def test_root_returns_service_metadata() -> None:
   response = make_client().get("/")
   assert response.status_code == 200
-  assert response.json()["service"] == "promptkit"
+  assert response.json()["service"] == "promptory"
 
 
 def test_list_versions_returns_released_versions(
   tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-  monkeypatch.setenv("PROMPTKIT_PROMPTS_DIR", str(tmp_path))
+  monkeypatch.setenv("PROMPTORY_PROMPTS_DIR", str(tmp_path))
   setup_release(tmp_path)
 
   response = make_client().get("/versions")
@@ -51,7 +51,7 @@ def test_list_versions_returns_released_versions(
 def test_current_version_returns_active_version(
   tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-  monkeypatch.setenv("PROMPTKIT_PROMPTS_DIR", str(tmp_path))
+  monkeypatch.setenv("PROMPTORY_PROMPTS_DIR", str(tmp_path))
   setup_release(tmp_path)
 
   response = make_client().get("/versions/current")
@@ -63,7 +63,7 @@ def test_current_version_returns_active_version(
 def test_current_version_returns_404_when_no_release(
   tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-  monkeypatch.setenv("PROMPTKIT_PROMPTS_DIR", str(tmp_path))
+  monkeypatch.setenv("PROMPTORY_PROMPTS_DIR", str(tmp_path))
   PromptManager(tmp_path).init()
 
   response = make_client().get("/versions/current")
@@ -72,7 +72,7 @@ def test_current_version_returns_404_when_no_release(
 
 
 def test_load_all_returns_all_prompts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-  monkeypatch.setenv("PROMPTKIT_PROMPTS_DIR", str(tmp_path))
+  monkeypatch.setenv("PROMPTORY_PROMPTS_DIR", str(tmp_path))
   setup_release(tmp_path, files={"system.yaml": "role: system\n", "user.yaml": "role: user\n"})
 
   response = make_client().get("/prompts")
@@ -84,7 +84,7 @@ def test_load_all_returns_all_prompts(tmp_path: Path, monkeypatch: pytest.Monkey
 
 
 def test_load_prompt_returns_single_prompt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-  monkeypatch.setenv("PROMPTKIT_PROMPTS_DIR", str(tmp_path))
+  monkeypatch.setenv("PROMPTORY_PROMPTS_DIR", str(tmp_path))
   setup_release(tmp_path, files={"system.yaml": "role: system\n"})
 
   response = make_client().get("/prompts/system.yaml")
@@ -96,7 +96,7 @@ def test_load_prompt_returns_single_prompt(tmp_path: Path, monkeypatch: pytest.M
 def test_load_prompt_returns_nested_prompt_path(
   tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-  monkeypatch.setenv("PROMPTKIT_PROMPTS_DIR", str(tmp_path))
+  monkeypatch.setenv("PROMPTORY_PROMPTS_DIR", str(tmp_path))
   setup_release(tmp_path, files={"agents/support/system.yaml": "role: support\n"})
 
   response = make_client().get("/prompts/agents/support/system.yaml")
@@ -108,7 +108,7 @@ def test_load_prompt_returns_nested_prompt_path(
 def test_load_prompt_path_traversal_rejected(
   tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-  monkeypatch.setenv("PROMPTKIT_PROMPTS_DIR", str(tmp_path))
+  monkeypatch.setenv("PROMPTORY_PROMPTS_DIR", str(tmp_path))
 
   response = make_client().get("/prompts/..%2F..%2Fetc%2Fpasswd")
 

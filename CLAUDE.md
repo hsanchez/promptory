@@ -1,4 +1,4 @@
-# Claude Code — Promptkit
+# Claude Code — Promptory
 
 See [AGENTS.md](AGENTS.md) for all shared instructions.
 

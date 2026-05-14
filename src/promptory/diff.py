@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from difflib import unified_diff
 
-from promptkit.config import PromptSpec
-from promptkit.release import read_current_version
-from promptkit.render import render_prompts
+from promptory.config import PromptSpec
+from promptory.release import read_current_version
+from promptory.render import render_prompts
 
 
 def diff_lines(content: str) -> list[str]:

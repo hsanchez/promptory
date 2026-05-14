@@ -239,7 +239,7 @@ wheels = [
 ]
 
 [[package]]
-name = "promptkit"
+name = "promptory"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

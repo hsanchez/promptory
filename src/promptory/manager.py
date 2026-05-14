@@ -1,4 +1,4 @@
-"""High-level PromptKit manager."""
+"""High-level Promptory manager."""
 
 from __future__ import annotations
 
@@ -7,12 +7,12 @@ from typing import Any
 
 import yaml
 
-from promptkit.config import PromptSpec, default_spec, load_spec
-from promptkit.diff import diff_current_against_drafts
-from promptkit.errors import PromptReleaseError
-from promptkit.lint import lint_prompts
-from promptkit.release import BumpType, create_release, read_current_version, write_current_pointer
-from promptkit.render import template_name_for
+from promptory.config import PromptSpec, default_spec, load_spec
+from promptory.diff import diff_current_against_drafts
+from promptory.errors import PromptReleaseError
+from promptory.lint import lint_prompts
+from promptory.release import BumpType, create_release, read_current_version, write_current_pointer
+from promptory.render import template_name_for
 
 
 class PromptManager:

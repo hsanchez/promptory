@@ -1,7 +1,7 @@
 # Architecture
 
-PromptKit manages prompt lifecycle state on the filesystem. Git remains the
-source of history, while PromptKit creates release artifacts with explicit
+Promptory manages prompt lifecycle state on the filesystem. Git remains the
+source of history, while Promptory creates release artifacts with explicit
 metadata and a current-release pointer.
 
 ## Component Map
@@ -145,9 +145,9 @@ lifecycle.
 
 Responsibilities:
 
-- Read the prompts directory from `PROMPTKIT_PROMPTS_DIR`.
+- Read the prompts directory from `PROMPTORY_PROMPTS_DIR`.
 - Return service metadata, versions, current version, all prompts, or one prompt.
-- Map PromptKit exceptions to HTTP errors.
+- Map Promptory exceptions to HTTP errors.
 - Preserve the read-only runtime boundary.
 
 ## Directories
@@ -202,7 +202,7 @@ sequenceDiagram
 ```
 
 Authoring commands can inspect or mutate lifecycle state. Git remains the durable
-history for source changes, while PromptKit writes release artifacts for runtime
+history for source changes, while Promptory writes release artifacts for runtime
 consumers.
 
 ## Runtime Flow
@@ -235,7 +235,7 @@ version, and loads rendered YAML from a known release directory.
 - Variables with Jinja `default` filters are optional.
 - Non-default Jinja variables must be listed in `required_variables`.
 - Release artifacts are rendered YAML and must parse successfully before release.
-- PromptKit writes `versions/` and `current.json`; developers edit `drafts/`.
+- Promptory writes `versions/` and `current.json`; developers edit `drafts/`.
 - Runtime code reads `current.json` and `versions/<version>/`; runtime code does
   not read `drafts/`.
 
@@ -251,12 +251,12 @@ version, and loads rendered YAML from a known release directory.
 Release-time variables flow through `PromptManager.release(variables=...)`.
 Rendered releases contain resolved YAML; runtime loading does not render Jinja.
 
-If writing the release fails, PromptKit removes the partially-created release
+If writing the release fails, Promptory removes the partially-created release
 directory.
 
 ## Boundaries
 
-PromptKit does not deploy prompts. CI/CD, applications, or provider-specific
+Promptory does not deploy prompts. CI/CD, applications, or provider-specific
 tools consume `current.json` and `versions/`.
 
 The runtime contract is:
@@ -302,10 +302,10 @@ drafts, create releases, mutate `current.json`, or deploy prompts.
 The server dependencies live behind the `serve` extra:
 
 ```toml
-promptkit[serve]
+promptory[serve]
 ```
 
-The prompts directory is configured with `PROMPTKIT_PROMPTS_DIR`. The CLI sets
+The prompts directory is configured with `PROMPTORY_PROMPTS_DIR`. The CLI sets
 this environment variable from `--prompts-dir` before launching Uvicorn.
 
 Endpoints:

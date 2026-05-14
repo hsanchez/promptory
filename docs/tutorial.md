@@ -1,7 +1,7 @@
 # Tutorial
 
-This tutorial walks through using PromptKit from another repository. It follows
-the same workflow used in the local smoke test: install PromptKit, create prompt
+This tutorial walks through using Promptory from another repository. It follows
+the same workflow used in the local smoke test: install Promptory, create prompt
 drafts, release rendered YAML artifacts, and load them from application code.
 
 ## Prerequisites
@@ -15,21 +15,21 @@ drafts, release rendered YAML artifacts, and load them from application code.
 Create a new project:
 
 ```bash
-mkdir promptkit-demo
-cd promptkit-demo
+mkdir promptory-demo
+cd promptory-demo
 uv init --bare
 ```
 
-Add PromptKit as a dependency:
+Add Promptory as a dependency:
 
 ```toml
 # pyproject.toml
 [project]
-name = "promptkit-demo"
+name = "promptory-demo"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
-  "promptkit @ git+https://github.com/hsanchez/promptkit.git",
+  "promptory @ git+https://github.com/hsanchez/promptory.git",
 ]
 ```
 
@@ -42,10 +42,10 @@ uv sync
 If you use GitHub SSH locally, this dependency also works:
 
 ```toml
-"promptkit @ git+ssh://git@github.com/hsanchez/promptkit.git"
+"promptory @ git+ssh://git@github.com/hsanchez/promptory.git"
 ```
 
-## Initialize PromptKit
+## Initialize Promptory
 
 Create the prompt directory:
 
@@ -53,7 +53,7 @@ Create the prompt directory:
 uv run prompt init
 ```
 
-PromptKit creates:
+Promptory creates:
 
 ```text
 prompts/
@@ -97,7 +97,7 @@ Create the first release:
 uv run prompt release --patch
 ```
 
-PromptKit writes:
+Promptory writes:
 
 ```text
 prompts/
@@ -134,7 +134,7 @@ v0.0.1
 Create `demo_app.py`:
 
 ```python
-from promptkit import PromptStore
+from promptory import PromptStore
 
 
 def main() -> None:
@@ -161,7 +161,7 @@ It does not read from `prompts/drafts/`.
 
 ## Add More Prompt Files
 
-PromptKit can track multiple rendered YAML files in the same release.
+Promptory can track multiple rendered YAML files in the same release.
 
 Update `prompts/promptspec.yaml`:
 
@@ -206,7 +206,7 @@ Create the next release:
 uv run prompt release --patch
 ```
 
-PromptKit writes:
+Promptory writes:
 
 ```text
 prompts/
@@ -221,7 +221,7 @@ prompts/
 Update `demo_app.py`:
 
 ```python
-from promptkit import PromptStore
+from promptory import PromptStore
 
 
 def main() -> None:
@@ -254,7 +254,7 @@ uv run python demo_app.py
 specific release:
 
 ```python
-from promptkit import PromptStore
+from promptory import PromptStore
 
 store = PromptStore("prompts")
 system_v1 = store.load("system.yaml", version="v0.0.1")
@@ -278,7 +278,7 @@ from `v0.0.1`.
 
 ## Release With Variables
 
-PromptKit drafts are Jinja templates. Variables are rendered at release time,
+Promptory drafts are Jinja templates. Variables are rendered at release time,
 not runtime.
 
 Example draft:
@@ -304,7 +304,7 @@ max_file_bytes: 100000
 Release from Python:
 
 ```python
-from promptkit.manager import PromptManager
+from promptory.manager import PromptManager
 
 version = PromptManager("prompts").release(
   variables={
@@ -317,7 +317,7 @@ version = PromptManager("prompts").release(
 Then load the rendered prompt:
 
 ```python
-from promptkit import PromptStore
+from promptory import PromptStore
 
 prompt = PromptStore("prompts").load("prompt.yaml", version=version)
 print(prompt["message"])

@@ -8,11 +8,11 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query
 
-from promptkit.errors import PromptLoadError, PromptSpecError
-from promptkit.store import PromptStore
+from promptory.errors import PromptLoadError, PromptSpecError
+from promptory.store import PromptStore
 
 app = FastAPI(
-  title="PromptKit Registry",
+  title="Promptory Registry",
   description="Cross-language Prompt Registry Service",
   version="0.1.0",
 )
@@ -21,10 +21,10 @@ app = FastAPI(
 def get_store() -> PromptStore:
   """Return a PromptStore instance.
 
-  Configured via PROMPTKIT_PROMPTS_DIR environment variable.
+  Configured via PROMPTORY_PROMPTS_DIR environment variable.
   Defaults to 'prompts'.
   """
-  prompts_dir = os.getenv("PROMPTKIT_PROMPTS_DIR", "prompts")
+  prompts_dir = os.getenv("PROMPTORY_PROMPTS_DIR", "prompts")
   return PromptStore(Path(prompts_dir))
 
 
@@ -32,7 +32,7 @@ def get_store() -> PromptStore:
 async def root() -> dict[str, str]:
   """Service metadata and health check."""
   return {
-    "service": "promptkit",
+    "service": "promptory",
     "status": "healthy",
     "description": "Cross-language Prompt Registry Service",
   }

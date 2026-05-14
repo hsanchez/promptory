@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from promptkit.config import load_spec, validate_prompt_file_name
-from promptkit.errors import PromptSpecError
+from promptory.config import load_spec, validate_prompt_file_name
+from promptory.errors import PromptSpecError
 
 
 def write_spec(prompts_dir: Path, content: str) -> None:

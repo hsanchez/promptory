@@ -4,7 +4,7 @@
 
 Please do **not** open a public GitHub issue for security vulnerabilities.
 
-Report security issues by emailing **promptkit@jellyfish.mozmail.com** with:
+Report security issues by emailing **promptory@jellyfish.mozmail.com** with:
 
 - A description of the vulnerability
 - Steps to reproduce

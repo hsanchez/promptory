@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from promptkit import PromptStore
-from promptkit.errors import PromptLoadError, PromptSpecError
-from promptkit.manager import PromptManager
+from promptory import PromptStore
+from promptory.errors import PromptLoadError, PromptSpecError
+from promptory.manager import PromptManager
 
 
 def write_multi_prompt_spec(prompts_dir: Path) -> None:

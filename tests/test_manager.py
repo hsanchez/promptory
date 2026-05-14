@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from promptkit.errors import PromptReleaseError
-from promptkit.manager import PromptManager
+from promptory.errors import PromptReleaseError
+from promptory.manager import PromptManager
 
 
 def test_init_creates_drafts_versions_and_default_spec(tmp_path: Path) -> None:
