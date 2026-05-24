@@ -112,18 +112,18 @@ def serve(
   port: int = 8000,
   reload: bool = False,
 ) -> None:
-  """Start the Prompt Registry Service."""
+  """Start the prompt sidecar adapter."""
   try:
     uvicorn = cast(Any, importlib.import_module("uvicorn"))
     importlib.import_module("promptory.serve")
   except ImportError:
-    console.print("[red]Registry service dependencies not found.[/red]")
+    console.print("[red]Sidecar adapter dependencies not found.[/red]")
     console.print("Install Promptory with the [bold]serve[/bold] extra.")
     raise typer.Exit(code=1) from None
 
   os.environ["PROMPTORY_PROMPTS_DIR"] = str(prompts_dir)
 
-  console.print(f"[green]Starting Prompt Registry Service on {host}:{port}[/green]")
+  console.print(f"[green]Starting prompt sidecar adapter on {host}:{port}[/green]")
   uvicorn.run("promptory.serve:app", host=host, port=port, reload=reload)
 
 

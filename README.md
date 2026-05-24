@@ -179,9 +179,36 @@ messages = [
 ]
 ```
 
-## Prompt Registry Service (`serve`)
+## Sidecar Adapter (`serve`)
 
-To facilitate collaboration across R&D teams (especially those using Go, TypeScript, or other non-Python languages), you can serve your versioned prompts as a REST API.
+`prompt serve` exposes a service's own prompts over HTTP so non-Python code
+(Go, TypeScript, Ruby, curl) can consume them without reimplementing Promptory's
+version resolution logic.
+
+Run it as a sidecar: a process that lives alongside the service that needs the
+prompts, reading from that service's own `prompts/` directory. It is not a
+shared cross-repo registry; each service runs its own instance against its own
+prompt repo.
+
+```
+your-service/
+  prompts/          # managed by Promptory
+    drafts/
+    versions/
+    current.json
+    promptspec.yaml
+  src/              # Go / TypeScript / Ruby service code
+```
+
+Start the sidecar next to your service:
+
+```bash
+uv run prompt serve --port 8000
+```
+
+Your non-Python code calls `localhost:8000/prompts/system.yaml`. When prompt
+authors run `prompt release`, the sidecar immediately serves the new version
+with no restart required, because the adapter reads `current.json` on every request.
 
 Install the optional service dependencies:
 
@@ -192,13 +219,20 @@ dev = [
 ]
 ```
 
-Start the registry service:
+Example curl workflow:
 
 ```bash
-uv run prompt serve --port 8000
+# Check active version
+curl http://localhost:8000/versions/current
+
+# Fetch a prompt
+curl http://localhost:8000/prompts/system.yaml
+
+# Fetch from a specific release (evals, replay, debugging)
+curl "http://localhost:8000/prompts/system.yaml?version=v0.1.0"
 ```
 
-The service provides a JSON API for discovery and consumption:
+Available endpoints:
 
 - `GET /versions`: List all available semantic versions.
 - `GET /versions/current`: Get the active version string.
