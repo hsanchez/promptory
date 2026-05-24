@@ -1,4 +1,4 @@
-"""FastAPI-based Prompt Registry Service."""
+"""FastAPI-based prompt sidecar adapter for non-Python consumers."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from promptory.errors import PromptLoadError, PromptSpecError
 from promptory.store import PromptStore
 
 app = FastAPI(
-  title="Promptory Registry",
-  description="Cross-language Prompt Registry Service",
+  title="Promptory Serve",
+  description="HTTP sidecar adapter: exposes a service's own released prompts to non-Python consumers.",
   version="0.1.0",
 )
 
@@ -34,7 +34,7 @@ async def root() -> dict[str, str]:
   return {
     "service": "promptory",
     "status": "healthy",
-    "description": "Cross-language Prompt Registry Service",
+    "description": "HTTP sidecar adapter for non-Python consumers",
   }
 
 

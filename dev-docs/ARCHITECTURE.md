@@ -128,18 +128,18 @@ to their LLM provider or internal prompt layer.
 ### Prompt CLI
 
 The `prompt` CLI is a thin user interface over `PromptManager`, `PromptStore`,
-and the registry service launcher.
+and the sidecar adapter launcher.
 
 Responsibilities:
 
 - Run authoring commands: `init`, `draft`, `check`, `release`, `diff`, and
   `rollback`.
 - List release versions through `PromptStore`.
-- Start the optional registry service with `prompt serve`.
+- Start the optional sidecar adapter with `prompt serve`.
 
-### Registry Service
+### Sidecar Adapter
 
-The registry service is a FastAPI wrapper around `PromptStore` for non-Python
+The sidecar adapter is a FastAPI wrapper around `PromptStore` for non-Python
 consumers. It exposes released prompts over HTTP without adding a second prompt
 lifecycle.
 
@@ -277,12 +277,12 @@ version directories sorted by semantic version.
 Future deployment integrations should live outside the core release path unless
 they preserve the same file-based artifacts and pointer model.
 
-## Registry Service
+## Sidecar Adapter
 
 ```mermaid
 sequenceDiagram
-  participant Client as HTTP client
-  participant API as FastAPI service
+  participant Client as Non-Python client
+  participant API as FastAPI sidecar
   participant Store as PromptStore
   participant Files as prompts/
 
@@ -295,9 +295,14 @@ sequenceDiagram
   API-->>Client: JSON response
 ```
 
-`prompt serve` starts an optional FastAPI service for non-Python consumers. The
-service is a read-only HTTP wrapper around `PromptStore`; it does not render
-drafts, create releases, mutate `current.json`, or deploy prompts.
+`prompt serve` is a sidecar adapter: a read-only HTTP process that runs
+alongside a single service and exposes that service's own released prompts to
+non-Python consumers (Go, TypeScript, Ruby, curl). It is not a shared
+cross-repo registry; each service runs its own instance against its own
+`prompts/` directory.
+
+The adapter reads `current.json` on every request, so a `prompt release` is
+immediately visible to HTTP consumers without restarting the sidecar.
 
 The server dependencies live behind the `serve` extra:
 

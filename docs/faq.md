@@ -117,7 +117,7 @@ Or use `PromptStore`:
 versions = store.list_versions()
 ```
 
-## Can I use curl with the registry service?
+## Can I use curl with the sidecar adapter?
 
 Yes. Start the service:
 
