@@ -15,6 +15,49 @@ artifacts created by Promptory.
 No. Treat each directory under `versions/` as immutable after creation. Make a
 new draft change and release a new version instead.
 
+## What is a staged release?
+
+A staged release is a rendered version under `versions/` that is not active yet.
+Create one with:
+
+```bash
+uv run prompt release --patch --staged
+```
+
+Promote it when it is ready:
+
+```bash
+uv run prompt promote v0.1.0
+```
+
+Promotion updates `current.json`.
+
+## What is release evidence?
+
+Evidence is immutable metadata attached to a release. External tools produce it;
+Promptory stores it with the exact rendered version it describes.
+
+```bash
+uv run prompt evidence add v0.1.0 eval-results.json
+uv run prompt evidence list v0.1.0
+uv run prompt evidence show v0.1.0 customer-support-regression
+```
+
+Promptory validates the basic evidence shape but does not run evals, call LLMs,
+manage datasets, or define metric semantics.
+
+## Can evidence be removed?
+
+No. Evidence is immutable. Revoke invalid evidence instead:
+
+```bash
+uv run prompt evidence revoke v0.1.0 customer-support-regression \
+  --reason "Eval used stale fixtures."
+```
+
+Revocation records a new artifact and lifecycle event. It does not edit or delete
+the original evidence file.
+
 ## Why is the directory named versions instead of .vault?
 
 Release artifacts are part of the project state users should review and commit.
@@ -76,6 +119,11 @@ The CLI does not accept release variables yet.
 
 Rollback updates `current.json` to point at an existing release. It does not
 rewrite files inside `versions/`.
+
+## Does draft restore evidence?
+
+No. Draft recovery copies prompt text from the current release back to
+`drafts/`. Evidence remains attached to the release it describes.
 
 ## How does my app use released prompts?
 

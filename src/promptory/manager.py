@@ -11,7 +11,13 @@ from promptory.config import PromptSpec, default_spec, load_spec
 from promptory.diff import diff_current_against_drafts
 from promptory.errors import PromptReleaseError
 from promptory.lint import lint_prompts
-from promptory.release import BumpType, create_release, read_current_version, write_current_pointer
+from promptory.release import (
+  BumpType,
+  create_release,
+  promote_release,
+  read_current_version,
+  write_current_pointer,
+)
 from promptory.render import template_name_for
 
 
@@ -66,10 +72,17 @@ class PromptManager:
     return lint_prompts(self.spec())
 
   def release(
-    self, bump: str | BumpType = BumpType.PATCH, variables: dict[str, Any] | None = None
+    self,
+    bump: str | BumpType = BumpType.PATCH,
+    variables: dict[str, Any] | None = None,
+    staged: bool = False,
   ) -> str:
     """Create a release."""
-    return create_release(self.spec(), bump=bump, variables=variables)
+    return create_release(self.spec(), bump=bump, variables=variables, staged=staged)
+
+  def promote(self, version: str) -> None:
+    """Promote a release and record the lifecycle event."""
+    promote_release(self.spec(), version)
 
   def diff(self) -> str:
     """Diff current prompts against rendered drafts."""

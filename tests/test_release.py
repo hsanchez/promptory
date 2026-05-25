@@ -15,6 +15,7 @@ from promptory.release import (
   normalize_version,
   parse_bump_type,
   parse_version,
+  promote_release,
   read_current_version,
 )
 
@@ -89,6 +90,48 @@ def test_create_release_writes_visible_version_metadata_and_pointer(tmp_path: Pa
   assert pointer["version"] == version
 
 
+def test_create_staged_release_does_not_update_current_pointer(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+
+  version = create_release(manager.spec(), staged=True)
+
+  release_dir = prompts_dir / "versions" / version
+  lifecycle = (release_dir / "lifecycle.jsonl").read_text()
+  assert version == "v0.0.1"
+  assert (release_dir / "system.yaml").exists()
+  assert (release_dir / "evidence").is_dir()
+  assert not (prompts_dir / "current.json").exists()
+  assert '"event": "release_staged"' in lifecycle
+
+
+def test_create_release_records_lifecycle_and_promotes_by_default(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+
+  version = create_release(manager.spec())
+
+  lifecycle = (prompts_dir / "versions" / version / "lifecycle.jsonl").read_text()
+  assert '"event": "release_created"' in lifecycle
+  assert '"event": "promoted"' in lifecycle
+
+
+def test_promote_release_updates_current_pointer_and_lifecycle(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  version = create_release(manager.spec(), staged=True)
+
+  promote_release(manager.spec(), version)
+
+  pointer = json.loads((prompts_dir / "current.json").read_text())
+  lifecycle = (prompts_dir / "versions" / version / "lifecycle.jsonl").read_text()
+  assert pointer["version"] == version
+  assert '"event": "promoted"' in lifecycle
+
+
 def test_create_release_accepts_explicit_variables(tmp_path: Path) -> None:
   prompts_dir = tmp_path / "prompts"
   drafts_dir = prompts_dir / "drafts"
@@ -118,6 +161,24 @@ def test_create_release_removes_partial_release_after_non_os_error(
 
   with pytest.raises(PromptReleaseError):
     create_release(manager.spec())
+
+  assert not (prompts_dir / "versions" / "v0.0.1").exists()
+
+
+def test_create_staged_release_removes_partial_release_after_non_os_error(
+  tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+
+  def fail_metadata(release_dir: Path, version: str, files: tuple[str, ...]) -> dict[str, object]:
+    raise PromptReleaseError("metadata failed")
+
+  monkeypatch.setattr(release_module, "write_metadata", fail_metadata)
+
+  with pytest.raises(PromptReleaseError):
+    create_release(manager.spec(), staged=True)
 
   assert not (prompts_dir / "versions" / "v0.0.1").exists()
 

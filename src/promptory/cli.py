@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import os
 from pathlib import Path
 from typing import Any, cast
@@ -11,10 +12,13 @@ import typer
 from rich.console import Console
 from rich.syntax import Syntax
 
+from promptory.evidence import add_evidence, list_evidence, revoke_evidence, show_evidence
 from promptory.manager import PromptManager
 from promptory.store import PromptStore
 
 app = typer.Typer(no_args_is_help=True)
+evidence_app = typer.Typer(no_args_is_help=True)
+app.add_typer(evidence_app, name="evidence")
 console = Console()
 
 
@@ -49,6 +53,7 @@ def release(
   patch: bool = False,
   minor: bool = False,
   major: bool = False,
+  staged: bool = False,
 ) -> None:
   """Create a new immutable prompt release."""
   selected = [
@@ -73,7 +78,10 @@ def release(
       console.print(f"[red]ERROR[/red] {error}")
     raise typer.Exit(code=1)
 
-  version = manager.release(bump=bump)
+  version = manager.release(bump=bump, staged=staged)
+  if staged:
+    console.print(f"[green]Created staged prompt release {version}.[/green]")
+    return
   console.print(f"[green]Created prompt release {version}.[/green]")
 
 
@@ -95,6 +103,13 @@ def rollback(version: str, prompts_dir: Path = Path("prompts")) -> None:
 
 
 @app.command()
+def promote(version: str, prompts_dir: Path = Path("prompts")) -> None:
+  """Promote a release and record the lifecycle event."""
+  PromptManager(prompts_dir).promote(version)
+  console.print(f"[green]Promoted {version}.[/green]")
+
+
+@app.command()
 def versions(prompts_dir: Path = Path("prompts")) -> None:
   """List available prompt releases."""
   available_versions = PromptStore(prompts_dir).list_versions()
@@ -103,6 +118,44 @@ def versions(prompts_dir: Path = Path("prompts")) -> None:
     return
   for version in available_versions:
     console.print(version)
+
+
+@evidence_app.command("add")
+def evidence_add(version: str, source_path: Path, prompts_dir: Path = Path("prompts")) -> None:
+  """Attach immutable evidence to a release."""
+  summary = add_evidence(PromptManager(prompts_dir).spec(), version, source_path)
+  console.print(f"[green]Added evidence {summary.name} to {version}.[/green]")
+
+
+@evidence_app.command("list")
+def evidence_list(version: str, prompts_dir: Path = Path("prompts")) -> None:
+  """List evidence attached to a release."""
+  summaries = list_evidence(PromptManager(prompts_dir).spec(), version)
+  if not summaries:
+    console.print("[yellow]No evidence found.[/yellow]")
+    return
+  for summary in summaries:
+    state = "revoked" if summary.revoked else summary.status
+    console.print(f"{summary.name}\t{summary.kind}\t{state}")
+
+
+@evidence_app.command("show")
+def evidence_show(version: str, name: str, prompts_dir: Path = Path("prompts")) -> None:
+  """Show one evidence document."""
+  evidence = show_evidence(PromptManager(prompts_dir).spec(), version, name)
+  console.print(json.dumps(evidence, indent=2))
+
+
+@evidence_app.command("revoke")
+def evidence_revoke(
+  version: str,
+  name: str,
+  reason: str = typer.Option(..., "--reason", help="Reason for revoking this evidence."),
+  prompts_dir: Path = Path("prompts"),
+) -> None:
+  """Record revocation for existing evidence."""
+  revoke_evidence(PromptManager(prompts_dir).spec(), version, name, reason)
+  console.print(f"[green]Revoked evidence {name} for {version}.[/green]")
 
 
 @app.command()

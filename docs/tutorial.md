@@ -105,6 +105,8 @@ prompts/
     v0.0.1/
       system.yaml
       metadata.json
+      lifecycle.jsonl
+      evidence/
   current.json
 ```
 
@@ -128,6 +130,64 @@ Output:
 ```text
 v0.0.1
 ```
+
+## Stage A Release Before Promotion
+
+Use a staged release when external checks need to inspect a rendered version
+before it becomes active:
+
+```bash
+uv run prompt release --patch --staged
+```
+
+Promptory writes the new version under `prompts/versions/`, but leaves
+`current.json` unchanged.
+
+Attach evidence produced by an external tool:
+
+```bash
+uv run prompt evidence add v0.0.2 customer-support-regression.json
+```
+
+Evidence documents use a small schema:
+
+```json
+{
+  "kind": "eval",
+  "name": "customer-support-regression",
+  "status": "pass",
+  "tool": "internal-eval-runner",
+  "created_at": "2026-05-24T12:00:00Z",
+  "summary": "No regressions against billing and refund scenarios.",
+  "metrics": {
+    "pass_rate": 0.94,
+    "failed_cases": 3
+  }
+}
+```
+
+Review evidence:
+
+```bash
+uv run prompt evidence list v0.0.2
+uv run prompt evidence show v0.0.2 customer-support-regression
+```
+
+If evidence is invalid, revoke it. Promptory records revocation without deleting
+the original evidence:
+
+```bash
+uv run prompt evidence revoke v0.0.2 customer-support-regression \
+  --reason "Eval used stale fixtures."
+```
+
+Promote the staged release when it is ready:
+
+```bash
+uv run prompt promote v0.0.2
+```
+
+Promotion updates `current.json`.
 
 ## Load Prompts In Application Code
 

@@ -85,6 +85,10 @@ uv run prompt init
 uv run prompt check
 uv run prompt draft
 uv run prompt release --patch
+uv run prompt release --patch --staged
+uv run prompt promote v0.1.0
+uv run prompt evidence add v0.1.0 eval-results.json
+uv run prompt evidence list v0.1.0
 uv run prompt diff
 uv run prompt versions
 uv run prompt rollback v0.1.0
@@ -105,6 +109,15 @@ uv run prompt versions
 uv run prompt rollback v0.1.0
 ```
 
+Use staged releases when a rendered version needs review or external evidence
+before it becomes active:
+
+```bash
+uv run prompt release --patch --staged
+uv run prompt evidence add v0.1.0 eval-results.json
+uv run prompt promote v0.1.0
+```
+
 Use draft to restore editable drafts from the active release:
 
 ```bash
@@ -117,6 +130,22 @@ uv run prompt draft
 
 `versions/` contains rendered YAML release artifacts. Promptory creates these
 directories. Treat them as immutable after creation.
+
+Each release can contain immutable lifecycle support files:
+
+```text
+versions/v0.1.0/
+  system.yaml
+  metadata.json
+  lifecycle.jsonl
+  evidence/
+    customer-support-regression.json
+    customer-support-regression.revocation.json
+```
+
+`metadata.json` is the creation-time manifest. `lifecycle.jsonl` records
+append-only events such as staged release creation, evidence attachment, and
+promotion. `evidence/` stores immutable results produced by external tools.
 
 `current.json` points at the active release. Rollback updates this pointer.
 

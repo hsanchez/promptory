@@ -7,6 +7,7 @@ import re
 import shutil
 from datetime import UTC, datetime
 from enum import StrEnum
+from pathlib import Path
 from typing import Any
 
 from promptory.config import PromptSpec
@@ -113,6 +114,17 @@ def write_current_pointer(spec: PromptSpec, version: str) -> None:
   spec.current_pointer_path.write_text(json.dumps(pointer, indent=2) + "\n")
 
 
+def append_lifecycle_event(release_dir: Path, event: str, details: dict[str, Any]) -> None:
+  """Append one lifecycle event for a release."""
+  entry = {
+    "event": event,
+    "created_at": datetime.now(UTC).isoformat(),
+    **details,
+  }
+  with (release_dir / "lifecycle.jsonl").open("a") as lifecycle_file:
+    lifecycle_file.write(json.dumps(entry, sort_keys=True) + "\n")
+
+
 def read_current_version(spec: PromptSpec) -> str | None:
   """Read current.json.
 
@@ -134,8 +146,9 @@ def create_release(
   spec: PromptSpec,
   bump: str | BumpType = BumpType.PATCH,
   variables: dict[str, Any] | None = None,
+  staged: bool = False,
 ) -> str:
-  """Render drafts, create a version release, and update current.json.
+  """Render drafts, create a version release, and optionally update current.json.
 
   Raises:
     PromptReleaseError: If the release cannot be created.
@@ -155,11 +168,32 @@ def create_release(
       output_path.parent.mkdir(parents=True, exist_ok=True)
       output_path.write_text(content)
     write_metadata(release_dir, version, spec.files)
+    (release_dir / "evidence").mkdir()
+    append_lifecycle_event(
+      release_dir,
+      "release_staged" if staged else "release_created",
+      {"version": version},
+    )
 
-    write_current_pointer(spec, version)
+    if not staged:
+      write_current_pointer(spec, version)
+      append_lifecycle_event(release_dir, "promoted", {"version": version})
   except Exception:
     if release_dir.exists():
       shutil.rmtree(release_dir)
     raise
 
   return version
+
+
+def promote_release(spec: PromptSpec, version: str) -> None:
+  """Point current.json at an existing release and record promotion.
+
+  Raises:
+    PromptReleaseError: If the release does not exist.
+  """
+  normalized_version = normalize_version(version)
+  release_dir = spec.versions_dir / normalized_version
+
+  write_current_pointer(spec, normalized_version)
+  append_lifecycle_event(release_dir, "promoted", {"version": normalized_version})
