@@ -79,7 +79,7 @@ def bump_version(current: str | None, bump: BumpType) -> str:
     return format_version((major, minor + 1, 0))
   if bump is BumpType.PATCH:
     return format_version((major, minor, patch + 1))
-  raise PromptReleaseError(f"Unknown bump type: {bump.value}")
+  raise PromptReleaseError(f"Unknown bump type: {bump!r}")
 
 
 def parse_bump_type(bump: str | BumpType) -> BumpType:
