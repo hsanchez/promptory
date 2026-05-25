@@ -173,6 +173,12 @@ uv run prompt evidence list v0.0.2
 uv run prompt evidence show v0.0.2 customer-support-regression
 ```
 
+Compare evidence with another release:
+
+```bash
+uv run prompt evidence compare v0.0.1 v0.0.2
+```
+
 If evidence is invalid, revoke it. Promptory records revocation without deleting
 the original evidence:
 

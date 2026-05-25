@@ -27,6 +27,45 @@ class EvidenceSummary:
   revocation_reason: str | None
 
 
+@dataclass(frozen=True)
+class EvidenceRecord:
+  """Evidence summary with scalar metrics for comparison."""
+
+  summary: EvidenceSummary
+  metrics: dict[str, object]
+
+
+@dataclass(frozen=True)
+class MetricChange:
+  """Scalar metric difference between two evidence documents."""
+
+  name: str
+  before: object | None
+  after: object | None
+
+
+@dataclass(frozen=True)
+class EvidenceChange:
+  """Evidence difference between two release versions."""
+
+  kind: str
+  name: str
+  before_status: str | None
+  after_status: str | None
+  before_revoked: bool | None
+  after_revoked: bool | None
+  metrics: tuple[MetricChange, ...]
+
+
+@dataclass(frozen=True)
+class EvidenceComparison:
+  """Evidence comparison between two release versions."""
+
+  before_version: str
+  after_version: str
+  changes: tuple[EvidenceChange, ...]
+
+
 def add_evidence(spec: PromptSpec, version: str, source_path: Path) -> EvidenceSummary:
   """Store immutable evidence for a release.
 
@@ -129,6 +168,36 @@ def revoke_evidence(spec: PromptSpec, version: str, name: str, reason: str) -> N
   )
 
 
+def compare_evidence(
+  spec: PromptSpec,
+  before_version: str,
+  after_version: str,
+) -> EvidenceComparison:
+  """Compare evidence attached to two releases.
+
+  Raises:
+    PromptEvidenceError: If either release or evidence set cannot be read.
+  """
+  before_dir = _release_dir(spec, before_version)
+  after_dir = _release_dir(spec, after_version)
+  before_evidence = _evidence_records_by_key(before_dir)
+  after_evidence = _evidence_records_by_key(after_dir)
+
+  changes: list[EvidenceChange] = []
+  for kind, name in sorted(before_evidence.keys() | after_evidence.keys()):
+    before = before_evidence.get((kind, name))
+    after = after_evidence.get((kind, name))
+    change = _compare_evidence_item(kind, name, before, after)
+    if change is not None:
+      changes.append(change)
+
+  return EvidenceComparison(
+    before_version=before_dir.name,
+    after_version=after_dir.name,
+    changes=tuple(changes),
+  )
+
+
 def _release_dir(spec: PromptSpec, version: str) -> Path:
   try:
     normalized_version = normalize_version(version)
@@ -212,3 +281,79 @@ def _summary_from_evidence(release_dir: Path, evidence: dict[str, Any]) -> Evide
     revoked=revoked,
     revocation_reason=revocation_reason,
   )
+
+
+def _evidence_records_by_key(release_dir: Path) -> dict[tuple[str, str], EvidenceRecord]:
+  evidence_dir = _evidence_dir_path(release_dir)
+  if not evidence_dir.exists():
+    return {}
+  records: dict[tuple[str, str], EvidenceRecord] = {}
+  for evidence_path in sorted(evidence_dir.glob("*.json")):
+    if evidence_path.name.endswith(".revocation.json"):
+      continue
+    evidence = _read_json_document(evidence_path)
+    summary = _summary_from_evidence(release_dir, evidence)
+    records[(summary.kind, summary.name)] = EvidenceRecord(
+      summary=summary,
+      metrics=_scalar_metrics(evidence),
+    )
+  return records
+
+
+def _compare_evidence_item(
+  kind: str,
+  name: str,
+  before: EvidenceRecord | None,
+  after: EvidenceRecord | None,
+) -> EvidenceChange | None:
+  before_summary = before.summary if before is not None else None
+  after_summary = after.summary if after is not None else None
+  metric_changes = _compare_metric_values(
+    before.metrics if before is not None else {},
+    after.metrics if after is not None else {},
+  )
+  before_status = before_summary.status if before_summary is not None else None
+  after_status = after_summary.status if after_summary is not None else None
+  before_revoked = before_summary.revoked if before_summary is not None else None
+  after_revoked = after_summary.revoked if after_summary is not None else None
+
+  if before_status == after_status and before_revoked == after_revoked and not metric_changes:
+    return None
+
+  return EvidenceChange(
+    kind=kind,
+    name=name,
+    before_status=before_status,
+    after_status=after_status,
+    before_revoked=before_revoked,
+    after_revoked=after_revoked,
+    metrics=metric_changes,
+  )
+
+
+def _scalar_metrics(document: dict[str, Any]) -> dict[str, object]:
+  metrics = document.get("metrics")
+  if not isinstance(metrics, dict):
+    return {}
+  return {
+    name: value
+    for name, value in metrics.items()
+    if isinstance(name, str) and _is_scalar_metric(value)
+  }
+
+
+def _compare_metric_values(
+  before: dict[str, object],
+  after: dict[str, object],
+) -> tuple[MetricChange, ...]:
+  changes: list[MetricChange] = []
+  for name in sorted(before.keys() | after.keys()):
+    before_value = before.get(name)
+    after_value = after.get(name)
+    if before_value != after_value:
+      changes.append(MetricChange(name=name, before=before_value, after=after_value))
+  return tuple(changes)
+
+
+def _is_scalar_metric(value: object) -> bool:
+  return value is None or isinstance(value, str | int | float | bool)

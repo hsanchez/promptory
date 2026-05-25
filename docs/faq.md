@@ -46,6 +46,18 @@ uv run prompt evidence show v0.1.0 customer-support-regression
 Promptory validates the basic evidence shape but does not run evals, call LLMs,
 manage datasets, or define metric semantics.
 
+## How do I compare evidence between releases?
+
+Use:
+
+```bash
+uv run prompt evidence compare v0.1.0 v0.2.0
+```
+
+Promptory compares attached evidence by `kind` and `name`, then shows status,
+revocation, and simple scalar metric changes. It does not decide whether one
+prompt is better.
+
 ## What are release gates?
 
 Release gates are promotion requirements declared in `promptspec.yaml`.

@@ -10,18 +10,23 @@ from promptory.cli import app
 from promptory.manager import PromptManager
 
 
-def write_cli_evidence(path: Path) -> None:
-  path.write_text(
-    json.dumps(
-      {
-        "kind": "eval",
-        "name": "customer-support-regression",
-        "status": "pass",
-        "tool": "internal-eval-runner",
-        "created_at": "2026-05-24T12:00:00Z",
-      }
-    )
-  )
+def write_cli_evidence(
+  path: Path,
+  *,
+  name: str = "customer-support-regression",
+  status: str = "pass",
+  pass_rate: float | None = None,
+) -> None:
+  document: dict[str, object] = {
+    "kind": "eval",
+    "name": name,
+    "status": status,
+    "tool": "internal-eval-runner",
+    "created_at": "2026-05-24T12:00:00Z",
+  }
+  if pass_rate is not None:
+    document["metrics"] = {"pass_rate": pass_rate}
+  path.write_text(json.dumps(document))
 
 
 def write_cli_gate_spec(prompts_dir: Path) -> None:
@@ -288,6 +293,98 @@ def test_evidence_show_command(staged_cli_release: tuple[Path, Path]) -> None:
 
   assert result.exit_code == 0
   assert '"status": "pass"' in result.output
+
+
+def test_evidence_compare_command_outputs_changes(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  first_version = manager.release(staged=True)
+  second_version = manager.release(staged=True)
+  before_path = tmp_path / "before.json"
+  after_path = tmp_path / "after.json"
+  write_cli_evidence(before_path, status="pass", pass_rate=0.91)
+  write_cli_evidence(after_path, status="fail", pass_rate=0.94)
+  runner = CliRunner()
+  first_add = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      first_version,
+      str(before_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  second_add = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      second_version,
+      str(after_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  assert first_add.exit_code == 0
+  assert second_add.exit_code == 0
+
+  result = runner.invoke(
+    app,
+    ["evidence", "compare", first_version, second_version, "--prompts-dir", str(prompts_dir)],
+  )
+
+  assert result.exit_code == 0
+  assert f"Evidence comparison: {first_version} -> {second_version}" in result.output
+  assert "status: pass -> fail" in result.output
+  assert "pass_rate: 0.91 -> 0.94" in result.output
+
+
+def test_evidence_compare_command_reports_no_changes(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  first_version = manager.release(staged=True)
+  second_version = manager.release(staged=True)
+  before_path = tmp_path / "before.json"
+  after_path = tmp_path / "after.json"
+  write_cli_evidence(before_path)
+  write_cli_evidence(after_path)
+  runner = CliRunner()
+  first_add = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      first_version,
+      str(before_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  second_add = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      second_version,
+      str(after_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  assert first_add.exit_code == 0
+  assert second_add.exit_code == 0
+
+  result = runner.invoke(
+    app,
+    ["evidence", "compare", first_version, second_version, "--prompts-dir", str(prompts_dir)],
+  )
+
+  assert result.exit_code == 0
+  assert result.output.strip() == "No evidence changes."
 
 
 def test_evidence_revoke_command(staged_cli_release: tuple[Path, Path]) -> None:

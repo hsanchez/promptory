@@ -132,6 +132,8 @@ Responsibilities:
 - Reject duplicate evidence names.
 - Record revocations as new artifacts and lifecycle events.
 - Leave original evidence documents untouched.
+- Compare evidence between releases by status, revocation state, and simple
+  scalar metrics.
 
 Promptory does not run evals, call LLMs, manage datasets, or define metric
 semantics.

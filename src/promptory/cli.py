@@ -13,7 +13,15 @@ from rich.console import Console
 from rich.syntax import Syntax
 
 from promptory.errors import PromptGateError
-from promptory.evidence import add_evidence, list_evidence, revoke_evidence, show_evidence
+from promptory.evidence import (
+  EvidenceChange,
+  EvidenceComparison,
+  add_evidence,
+  compare_evidence,
+  list_evidence,
+  revoke_evidence,
+  show_evidence,
+)
 from promptory.gates import GateResult
 from promptory.manager import PromptManager
 from promptory.store import PromptStore
@@ -169,6 +177,17 @@ def evidence_show(version: str, name: str, prompts_dir: Path = Path("prompts")) 
   console.print(json.dumps(evidence, indent=2))
 
 
+@evidence_app.command("compare")
+def evidence_compare(
+  before_version: str,
+  after_version: str,
+  prompts_dir: Path = Path("prompts"),
+) -> None:
+  """Compare evidence between two releases."""
+  comparison = compare_evidence(PromptManager(prompts_dir).spec(), before_version, after_version)
+  _print_evidence_comparison(comparison)
+
+
 @evidence_app.command("revoke")
 def evidence_revoke(
   version: str,
@@ -190,6 +209,47 @@ def _print_gate_result(result: GateResult) -> None:
       console.print(f"[green]PASS[/green] {check.name}")
     else:
       console.print(f"[red]FAIL[/red] {check.name}: {check.reason}")
+
+
+def _print_evidence_comparison(comparison: EvidenceComparison) -> None:
+  if not comparison.changes:
+    console.print("[green]No evidence changes.[/green]")
+    return
+
+  console.print(f"Evidence comparison: {comparison.before_version} -> {comparison.after_version}")
+  for change in comparison.changes:
+    console.print("")
+    console.print(change.name)
+    for line in _evidence_change_lines(change):
+      console.print(f"  {line}")
+
+
+def _evidence_change_lines(change: EvidenceChange) -> list[str]:
+  lines: list[str] = []
+  if change.before_status != change.after_status:
+    lines.append(
+      f"status: {_format_optional_value(change.before_status)} -> "
+      f"{_format_optional_value(change.after_status)}"
+    )
+  if change.before_revoked != change.after_revoked:
+    lines.append(
+      f"revoked: {_format_optional_value(change.before_revoked)} -> "
+      f"{_format_optional_value(change.after_revoked)}"
+    )
+  for metric in change.metrics:
+    lines.append(
+      f"{metric.name}: {_format_optional_value(metric.before)} -> "
+      f"{_format_optional_value(metric.after)}"
+    )
+  return lines
+
+
+def _format_optional_value(value: object | None) -> str:
+  if value is None:
+    return "missing"
+  if isinstance(value, bool):
+    return str(value).lower()
+  return str(value)
 
 
 @app.command()
