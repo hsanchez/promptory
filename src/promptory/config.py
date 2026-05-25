@@ -2,12 +2,45 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
+from typing import cast
 
 import yaml
 
 from promptory.errors import PromptSpecError
+
+EVIDENCE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+
+
+class EvidenceStatus(StrEnum):
+  """Supported release evidence statuses."""
+
+  PASS = "pass"
+  FAIL = "fail"
+  WARNING = "warning"
+  INFO = "info"
+
+
+EVIDENCE_STATUSES = {status.value for status in EvidenceStatus}
+
+
+@dataclass(frozen=True)
+class EvidenceGate:
+  """Evidence requirement for release promotion."""
+
+  kind: str
+  name: str
+  required_status: EvidenceStatus
+
+
+@dataclass(frozen=True)
+class ReleaseGates:
+  """Configured gates for release promotion."""
+
+  evidence: tuple[EvidenceGate, ...]
 
 
 @dataclass(frozen=True)
@@ -18,6 +51,7 @@ class PromptSpec:
   files: tuple[str, ...]
   required_variables: list[str]
   max_file_bytes: int
+  release_gates: ReleaseGates
 
   @property
   def drafts_dir(self) -> Path:
@@ -43,6 +77,30 @@ def default_spec() -> dict[str, object]:
     "required_variables": [],
     "max_file_bytes": 100_000,
   }
+
+
+def validate_evidence_name(name: str) -> str:
+  """Validate an evidence identifier from promptspec.yaml.
+
+  Raises:
+    PromptSpecError: If the evidence name is unsafe or unsupported.
+  """
+  if not name:
+    raise PromptSpecError("Evidence name must not be empty")
+  if name in {".", ".."}:
+    raise PromptSpecError(f"Evidence name is invalid: {name}")
+  path = Path(name)
+  if path.is_absolute():
+    raise PromptSpecError(f"Evidence name must be relative: {name}")
+  if ".." in path.parts:
+    raise PromptSpecError(f"Evidence name cannot contain '..': {name}")
+  if any(part in {"", "."} for part in path.parts):
+    raise PromptSpecError(f"Evidence name is invalid: {name}")
+  if any(separator in name for separator in ("/", "\\")):
+    raise PromptSpecError(f"Evidence name cannot contain path separators: {name}")
+  if not EVIDENCE_NAME_RE.match(name):
+    raise PromptSpecError(f"Evidence name is invalid: {name}")
+  return name
 
 
 def validate_prompt_file_name(file_name: str) -> str:
@@ -101,9 +159,56 @@ def load_spec(prompts_dir: Path) -> PromptSpec:
   if not isinstance(max_file_bytes, int) or max_file_bytes <= 0:
     raise PromptSpecError("promptspec.yaml max_file_bytes must be a positive int")
 
+  release_gates = _load_release_gates(raw.get("release_gates", {}))
+
   return PromptSpec(
     prompts_dir=prompts_dir,
     files=validated_files,
     required_variables=required_variables,
     max_file_bytes=max_file_bytes,
+    release_gates=release_gates,
   )
+
+
+def _load_release_gates(raw: object) -> ReleaseGates:
+  if raw is None:
+    return ReleaseGates(evidence=())
+  if not isinstance(raw, dict):
+    raise PromptSpecError("promptspec.yaml release_gates must be a mapping")
+
+  raw_gates = cast(dict[str, object], raw)
+  evidence = raw_gates.get("evidence")
+  if evidence is None:
+    evidence = []
+  if not isinstance(evidence, list):
+    raise PromptSpecError("promptspec.yaml release_gates.evidence must be a list")
+
+  evidence_gates: list[EvidenceGate] = []
+  for item in evidence:
+    if not isinstance(item, dict):
+      raise PromptSpecError("promptspec.yaml release_gates.evidence items must be mappings")
+    gate = cast(dict[str, object], item)
+    kind = gate.get("kind")
+    name = gate.get("name")
+    required_status = gate.get("required_status")
+    if not isinstance(kind, str) or not kind:
+      raise PromptSpecError("Evidence gate kind must be a non-empty string")
+    if not isinstance(name, str):
+      raise PromptSpecError("Evidence gate name must be a string")
+    if not isinstance(required_status, str) or not required_status:
+      raise PromptSpecError("Evidence gate required_status must be a non-empty string")
+    try:
+      evidence_status = EvidenceStatus(required_status)
+    except ValueError as exc:
+      raise PromptSpecError(
+        f"Evidence gate required_status is unsupported: {required_status}"
+      ) from exc
+    evidence_gates.append(
+      EvidenceGate(
+        kind=kind,
+        name=validate_evidence_name(name),
+        required_status=evidence_status,
+      )
+    )
+
+  return ReleaseGates(evidence=tuple(evidence_gates))

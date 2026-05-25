@@ -46,6 +46,32 @@ uv run prompt evidence show v0.1.0 customer-support-regression
 Promptory validates the basic evidence shape but does not run evals, call LLMs,
 manage datasets, or define metric semantics.
 
+## What are release gates?
+
+Release gates are promotion requirements declared in `promptspec.yaml`.
+
+```yaml
+release_gates:
+  evidence:
+    - kind: eval
+      name: customer-support-regression
+      required_status: pass
+```
+
+Check a version:
+
+```bash
+uv run prompt gate v0.1.0
+```
+
+Require passing gates during promotion:
+
+```bash
+uv run prompt promote v0.1.0 --require-gates
+```
+
+Promptory checks attached evidence. It does not run evals or safety checks.
+
 ## Can evidence be removed?
 
 No. Evidence is immutable. Revoke invalid evidence instead:

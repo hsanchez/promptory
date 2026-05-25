@@ -12,7 +12,9 @@ import typer
 from rich.console import Console
 from rich.syntax import Syntax
 
+from promptory.errors import PromptGateError
 from promptory.evidence import add_evidence, list_evidence, revoke_evidence, show_evidence
+from promptory.gates import GateResult
 from promptory.manager import PromptManager
 from promptory.store import PromptStore
 
@@ -103,10 +105,31 @@ def rollback(version: str, prompts_dir: Path = Path("prompts")) -> None:
 
 
 @app.command()
-def promote(version: str, prompts_dir: Path = Path("prompts")) -> None:
+def promote(
+  version: str,
+  prompts_dir: Path = Path("prompts"),
+  require_gates: bool = False,
+) -> None:
   """Promote a release and record the lifecycle event."""
-  PromptManager(prompts_dir).promote(version)
+  try:
+    PromptManager(prompts_dir).promote(version, require_gates=require_gates)
+  except PromptGateError as exc:
+    console.print(f"[red]ERROR[/red] {exc}")
+    raise typer.Exit(code=1) from None
   console.print(f"[green]Promoted {version}.[/green]")
+
+
+@app.command()
+def gate(version: str, prompts_dir: Path = Path("prompts")) -> None:
+  """Check release gates for a version."""
+  try:
+    result = PromptManager(prompts_dir).gate(version)
+  except PromptGateError as exc:
+    console.print(f"[red]ERROR[/red] {exc}")
+    raise typer.Exit(code=1) from None
+  _print_gate_result(result)
+  if not result.passed:
+    raise typer.Exit(code=1)
 
 
 @app.command()
@@ -156,6 +179,17 @@ def evidence_revoke(
   """Record revocation for existing evidence."""
   revoke_evidence(PromptManager(prompts_dir).spec(), version, name, reason)
   console.print(f"[green]Revoked evidence {name} for {version}.[/green]")
+
+
+def _print_gate_result(result: GateResult) -> None:
+  if not result.checks:
+    console.print("[green]No release gates configured.[/green]")
+    return
+  for check in result.checks:
+    if check.passed:
+      console.print(f"[green]PASS[/green] {check.name}")
+    else:
+      console.print(f"[red]FAIL[/red] {check.name}: {check.reason}")
 
 
 @app.command()

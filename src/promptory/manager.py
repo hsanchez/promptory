@@ -10,6 +10,7 @@ import yaml
 from promptory.config import PromptSpec, default_spec, load_spec
 from promptory.diff import diff_current_against_drafts
 from promptory.errors import PromptReleaseError
+from promptory.gates import GateResult, check_release_gates, require_release_gates
 from promptory.lint import lint_prompts
 from promptory.release import (
   BumpType,
@@ -80,9 +81,16 @@ class PromptManager:
     """Create a release."""
     return create_release(self.spec(), bump=bump, variables=variables, staged=staged)
 
-  def promote(self, version: str) -> None:
+  def gate(self, version: str) -> GateResult:
+    """Check release gates for a version."""
+    return check_release_gates(self.spec(), version)
+
+  def promote(self, version: str, require_gates: bool = False) -> None:
     """Promote a release and record the lifecycle event."""
-    promote_release(self.spec(), version)
+    spec = self.spec()
+    if require_gates:
+      require_release_gates(spec, version)
+    promote_release(spec, version)
 
   def diff(self) -> str:
     """Diff current prompts against rendered drafts."""

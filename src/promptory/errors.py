@@ -21,5 +21,9 @@ class PromptEvidenceError(PromptoryError):
   """Raised when release evidence cannot be stored or read."""
 
 
+class PromptGateError(PromptoryError):
+  """Raised when release gates fail or cannot be checked."""
+
+
 class PromptLoadError(PromptoryError):
   """Raised when a released prompt cannot be loaded."""

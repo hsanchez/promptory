@@ -19,6 +19,7 @@ flowchart TD
   Manager --> Linter[Prompt linter]
   Manager --> Renderer[Jinja renderer]
   Manager --> Release[Release writer]
+  Manager --> Gates[Release gates]
   Manager --> Diff[Diff engine]
 
   Linter --> Drafts
@@ -28,6 +29,8 @@ flowchart TD
   Release --> Lifecycle[lifecycle.jsonl]
   Release --> Evidence[evidence/]
   Release --> Current[current.json]
+  Gates --> Evidence
+  Gates --> Spec
   Diff --> Drafts
   Diff --> Versions
 
@@ -58,6 +61,7 @@ Responsibilities:
 - Run checks before releases through the linter.
 - Create immutable releases through the release writer.
 - Create staged releases without updating `current.json`.
+- Check release gates before promotion when requested.
 - Promote an existing release by updating `current.json`.
 - Point `current.json` at an existing release during rollback.
 
@@ -131,6 +135,20 @@ Responsibilities:
 
 Promptory does not run evals, call LLMs, manage datasets, or define metric
 semantics.
+
+### Release Gates
+
+Release gates check whether a release has the configured evidence required for
+promotion.
+
+Responsibilities:
+
+- Read `release_gates` from `promptspec.yaml`.
+- Match required evidence by `kind` and `name`.
+- Fail when required evidence is missing, revoked, or has the wrong status.
+- Block promotion only when the user passes `--require-gates`.
+
+Release gates inspect lifecycle metadata. They do not run external checks.
 
 ### PromptStore
 
@@ -263,7 +281,8 @@ sequenceDiagram
   Evidence->>Files: write evidence/*.json
   Evidence->>Files: append evidence_added
   Developer->>CLI: prompt promote vX.Y.Z
-  CLI->>Manager: promote(version)
+  CLI->>Manager: promote(version, require_gates=True)
+  Manager->>Evidence: check release gates
   Manager->>Release: promote release
   Release->>Files: write current.json
   Release->>Files: append promoted
@@ -304,6 +323,8 @@ version, and loads rendered YAML from a known release directory.
   not read `drafts/`.
 - Staged releases exist in `versions/` without being pointed to by
   `current.json`.
+- Release gates use configured evidence requirements to decide whether a staged
+  release can be promoted with `--require-gates`.
 - `metadata.json` is creation-time metadata.
 - `lifecycle.jsonl` is append-only lifecycle history.
 - Evidence documents are immutable; revocation adds a new artifact and event.

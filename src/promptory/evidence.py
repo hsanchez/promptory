@@ -3,18 +3,14 @@
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from promptory.config import PromptSpec
-from promptory.errors import PromptEvidenceError, PromptReleaseError
+from promptory.config import EVIDENCE_STATUSES, PromptSpec, validate_evidence_name
+from promptory.errors import PromptEvidenceError, PromptReleaseError, PromptSpecError
 from promptory.release import append_lifecycle_event, normalize_version
-
-EVIDENCE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
-EVIDENCE_STATUSES = {"pass", "fail", "warning", "info"}
 
 
 @dataclass(frozen=True)
@@ -188,9 +184,10 @@ def _validate_evidence_document(document: dict[str, Any]) -> None:
 
 
 def _validate_evidence_name(name: str) -> str:
-  if not EVIDENCE_NAME_RE.match(name):
-    raise PromptEvidenceError(f"Evidence name is invalid: {name}")
-  return name
+  try:
+    return validate_evidence_name(name)
+  except PromptSpecError as exc:
+    raise PromptEvidenceError(str(exc)) from exc
 
 
 def _summary_from_evidence(release_dir: Path, evidence: dict[str, Any]) -> EvidenceSummary:

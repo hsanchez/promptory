@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 import promptory.release as release_module
-from promptory.config import PromptSpec
+from promptory.config import PromptSpec, ReleaseGates
 from promptory.errors import PromptReleaseError
 from promptory.manager import PromptManager
 from promptory.release import (
@@ -26,6 +26,7 @@ def make_spec(prompts_dir: Path) -> PromptSpec:
     files=("system.yaml",),
     required_variables=[],
     max_file_bytes=1000,
+    release_gates=ReleaseGates(evidence=()),
   )
 
 

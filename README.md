@@ -87,6 +87,8 @@ uv run prompt draft
 uv run prompt release --patch
 uv run prompt release --patch --staged
 uv run prompt promote v0.1.0
+uv run prompt gate v0.1.0
+uv run prompt promote v0.1.0 --require-gates
 uv run prompt evidence add v0.1.0 eval-results.json
 uv run prompt evidence list v0.1.0
 uv run prompt diff
@@ -115,7 +117,8 @@ before it becomes active:
 ```bash
 uv run prompt release --patch --staged
 uv run prompt evidence add v0.1.0 eval-results.json
-uv run prompt promote v0.1.0
+uv run prompt gate v0.1.0
+uv run prompt promote v0.1.0 --require-gates
 ```
 
 Use draft to restore editable drafts from the active release:
@@ -171,6 +174,19 @@ files:
 required_variables: []
 max_file_bytes: 100000
 ```
+
+Add `release_gates` to require evidence before promotion:
+
+```yaml
+release_gates:
+  evidence:
+    - kind: eval
+      name: customer-support-regression
+      required_status: pass
+```
+
+`prompt gate` verifies that required evidence exists, has the required status,
+and has not been revoked. It does not run evals or safety checks.
 
 Prompt files must be relative `.yaml` paths. Draft templates use the same path
 with `.j2` appended, so `system.yaml` renders from `system.yaml.j2`.

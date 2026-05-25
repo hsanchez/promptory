@@ -181,10 +181,27 @@ uv run prompt evidence revoke v0.0.2 customer-support-regression \
   --reason "Eval used stale fixtures."
 ```
 
+Configure release gates when promotion should require specific evidence:
+
+```yaml
+# prompts/promptspec.yaml
+release_gates:
+  evidence:
+    - kind: eval
+      name: customer-support-regression
+      required_status: pass
+```
+
+Check gates before promotion:
+
+```bash
+uv run prompt gate v0.0.2
+```
+
 Promote the staged release when it is ready:
 
 ```bash
-uv run prompt promote v0.0.2
+uv run prompt promote v0.0.2 --require-gates
 ```
 
 Promotion updates `current.json`.

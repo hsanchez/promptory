@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from promptory.config import PromptSpec
+from promptory.config import PromptSpec, ReleaseGates
 from promptory.errors import PromptRenderError
 from promptory.render import render_prompts, required_template_variables, template_name_for
 
@@ -13,6 +13,7 @@ def make_spec(prompts_dir: Path, files: tuple[str, ...] = ("system.yaml",)) -> P
     files=files,
     required_variables=[],
     max_file_bytes=1000,
+    release_gates=ReleaseGates(evidence=()),
   )
 
 

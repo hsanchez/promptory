@@ -24,6 +24,20 @@ def write_cli_evidence(path: Path) -> None:
   )
 
 
+def write_cli_gate_spec(prompts_dir: Path) -> None:
+  (prompts_dir / "promptspec.yaml").write_text(
+    "files:\n"
+    "  - system.yaml\n"
+    "required_variables: []\n"
+    "max_file_bytes: 1000\n"
+    "release_gates:\n"
+    "  evidence:\n"
+    "    - kind: eval\n"
+    "      name: customer-support-regression\n"
+    "      required_status: pass\n"
+  )
+
+
 @pytest.fixture
 def staged_cli_release(tmp_path: Path) -> tuple[Path, Path]:
   prompts_dir = tmp_path / "prompts"
@@ -116,6 +130,87 @@ def test_promote_command_updates_current_pointer(tmp_path: Path) -> None:
   assert result.exit_code == 0
   assert "Promoted v0.0.1." in result.output
   assert json.loads((prompts_dir / "current.json").read_text())["version"] == "v0.0.1"
+
+
+def test_gate_command_passes_with_valid_evidence(staged_cli_release: tuple[Path, Path]) -> None:
+  prompts_dir, evidence_path = staged_cli_release
+  write_cli_gate_spec(prompts_dir)
+  runner = CliRunner()
+  add_result = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      "v0.0.1",
+      str(evidence_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  assert add_result.exit_code == 0
+
+  result = runner.invoke(app, ["gate", "v0.0.1", "--prompts-dir", str(prompts_dir)])
+
+  assert result.exit_code == 0
+  assert "PASS customer-support-regression" in result.output
+
+
+def test_gate_command_fails_when_required_evidence_is_missing(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  write_cli_gate_spec(prompts_dir)
+  manager.release(staged=True)
+  runner = CliRunner()
+
+  result = runner.invoke(app, ["gate", "v0.0.1", "--prompts-dir", str(prompts_dir)])
+
+  assert result.exit_code == 1
+  assert "FAIL customer-support-regression: required evidence missing" in result.output
+
+
+def test_promote_command_requires_passing_gates(staged_cli_release: tuple[Path, Path]) -> None:
+  prompts_dir, evidence_path = staged_cli_release
+  write_cli_gate_spec(prompts_dir)
+  runner = CliRunner()
+  add_result = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      "v0.0.1",
+      str(evidence_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  assert add_result.exit_code == 0
+
+  result = runner.invoke(
+    app,
+    ["promote", "v0.0.1", "--require-gates", "--prompts-dir", str(prompts_dir)],
+  )
+
+  assert result.exit_code == 0
+  assert json.loads((prompts_dir / "current.json").read_text())["version"] == "v0.0.1"
+
+
+def test_promote_command_rejects_failing_gates(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  write_cli_gate_spec(prompts_dir)
+  manager.release(staged=True)
+  runner = CliRunner()
+
+  result = runner.invoke(
+    app,
+    ["promote", "v0.0.1", "--require-gates", "--prompts-dir", str(prompts_dir)],
+  )
+
+  assert result.exit_code == 1
+  assert "Release gates failed for v0.0.1" in result.output
+  assert not (prompts_dir / "current.json").exists()
 
 
 def test_evidence_add_command(staged_cli_release: tuple[Path, Path]) -> None:
