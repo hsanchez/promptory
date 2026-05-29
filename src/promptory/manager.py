@@ -8,7 +8,12 @@ from typing import Any
 import yaml
 
 from promptory.config import PromptSpec, default_spec, load_spec
-from promptory.diff import diff_current_against_drafts
+from promptory.diff import (
+  PromptDiffSummary,
+  diff_current_against_drafts,
+  summarize_current_against_drafts,
+  summarize_versions,
+)
 from promptory.errors import PromptReleaseError
 from promptory.gates import GateResult, check_release_gates, require_release_gates
 from promptory.lint import lint_prompts
@@ -95,6 +100,19 @@ class PromptManager:
   def diff(self) -> str:
     """Diff current prompts against rendered drafts."""
     return diff_current_against_drafts(self.spec())
+
+  def diff_summary(
+    self,
+    before_version: str | None = None,
+    after_version: str | None = None,
+  ) -> PromptDiffSummary:
+    """Summarize prompt changes."""
+    spec = self.spec()
+    if before_version is None and after_version is None:
+      return summarize_current_against_drafts(spec)
+    if before_version is None or after_version is None:
+      raise PromptReleaseError("Both --from and --to are required for version summary diffs")
+    return summarize_versions(spec, before_version, after_version)
 
   def rollback(self, version: str) -> None:
     """Point current.json at an existing release."""

@@ -152,6 +152,18 @@ Responsibilities:
 
 Release gates inspect lifecycle metadata. They do not run external checks.
 
+### Diff Engine
+
+The diff engine compares rendered prompt content.
+
+Responsibilities:
+
+- Produce unified diffs between the current release and rendered drafts.
+- Produce semantic summaries for current-to-draft and version-to-version
+  comparisons.
+- Report changed managed files, character count deltas, and scalar YAML value
+  changes.
+
 ### PromptStore
 
 `PromptStore` is the runtime API for Python consumers. It reads released prompt

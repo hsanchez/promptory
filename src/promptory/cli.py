@@ -12,7 +12,13 @@ import typer
 from rich.console import Console
 from rich.syntax import Syntax
 
-from promptory.errors import PromptGateError
+from promptory.diff import (
+  FileDiffSummary,
+  PromptDiffSummary,
+  YamlValueChange,
+  is_missing_yaml_value,
+)
+from promptory.errors import PromptGateError, PromptReleaseError, PromptRenderError
 from promptory.evidence import (
   EvidenceChange,
   EvidenceComparison,
@@ -96,8 +102,28 @@ def release(
 
 
 @app.command()
-def diff(prompts_dir: Path = Path("prompts")) -> None:
+def diff(
+  prompts_dir: Path = Path("prompts"),
+  summary: bool = False,
+  from_version: str | None = typer.Option(None, "--from"),
+  to_version: str | None = typer.Option(None, "--to"),
+) -> None:
   """Show a colored diff between the current release and rendered drafts."""
+  if summary:
+    try:
+      output = PromptManager(prompts_dir).diff_summary(
+        before_version=from_version,
+        after_version=to_version,
+      )
+    except (PromptReleaseError, PromptRenderError) as exc:
+      console.print(f"[red]ERROR[/red] {exc}")
+      raise typer.Exit(code=1) from None
+    _print_diff_summary(output)
+    return
+  if from_version is not None or to_version is not None:
+    console.print("[red]ERROR[/red] --from and --to require --summary.")
+    raise typer.Exit(code=1)
+
   output = PromptManager(prompts_dir).diff()
   if not output:
     console.print("[green]No prompt changes.[/green]")
@@ -247,6 +273,43 @@ def _evidence_change_lines(change: EvidenceChange) -> list[str]:
 def _format_optional_value(value: object | None) -> str:
   if value is None:
     return "missing"
+  if isinstance(value, bool):
+    return str(value).lower()
+  return str(value)
+
+
+def _print_diff_summary(summary: PromptDiffSummary) -> None:
+  if not summary.files:
+    console.print("[green]No prompt changes.[/green]")
+    return
+
+  console.print(f"Prompt diff summary: {summary.before_label} -> {summary.after_label}")
+  for file_summary in summary.files:
+    console.print("")
+    _print_file_diff_summary(file_summary)
+
+
+def _print_file_diff_summary(summary: FileDiffSummary) -> None:
+  delta = summary.after_chars - summary.before_chars
+  sign = "+" if delta >= 0 else ""
+  console.print(summary.file_name)
+  console.print(f"  chars: {summary.before_chars} -> {summary.after_chars} ({sign}{delta})")
+  if not summary.yaml_changes:
+    return
+  console.print("  YAML values:")
+  for change in summary.yaml_changes:
+    console.print(f"    {change.path}: {_format_yaml_change_value(change)}")
+
+
+def _format_yaml_change_value(change: YamlValueChange) -> str:
+  return f"{_format_yaml_value(change.before)} -> {_format_yaml_value(change.after)}"
+
+
+def _format_yaml_value(value: object) -> str:
+  if is_missing_yaml_value(value):
+    return "missing"
+  if value is None:
+    return "null"
   if isinstance(value, bool):
     return str(value).lower()
   return str(value)

@@ -93,6 +93,8 @@ uv run prompt evidence add v0.1.0 eval-results.json
 uv run prompt evidence list v0.1.0
 uv run prompt evidence compare v0.1.0 v0.2.0
 uv run prompt diff
+uv run prompt diff --summary
+uv run prompt diff --summary --from v0.1.0 --to v0.2.0
 uv run prompt versions
 uv run prompt rollback v0.1.0
 ```
@@ -102,6 +104,7 @@ Typical workflow:
 ```bash
 uv run prompt check
 uv run prompt diff
+uv run prompt diff --summary
 uv run prompt release --patch
 ```
 

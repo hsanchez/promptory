@@ -58,6 +58,23 @@ Promptory compares attached evidence by `kind` and `name`, then shows status,
 revocation, and simple scalar metric changes. It does not decide whether one
 prompt is better.
 
+## How do I summarize prompt changes?
+
+Use:
+
+```bash
+uv run prompt diff --summary
+```
+
+Compare two released versions:
+
+```bash
+uv run prompt diff --summary --from v0.1.0 --to v0.2.0
+```
+
+The summary shows changed managed files, character count deltas, and scalar YAML
+value changes. Use `prompt diff` for the full unified diff.
+
 ## What are release gates?
 
 Release gates are promotion requirements declared in `promptspec.yaml`.

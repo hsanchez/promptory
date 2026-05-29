@@ -85,6 +85,108 @@ def test_diff_command_outputs_unified_diff(tmp_path: Path) -> None:
   assert "+system_prompt: changed" in result.output
 
 
+def test_diff_summary_command_outputs_semantic_summary(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  manager.release()
+  (prompts_dir / "drafts" / "system.yaml.j2").write_text(
+    "model: gpt-5.5\ntemperature: 0.1\nsystem_prompt: changed\n"
+  )
+  runner = CliRunner()
+
+  result = runner.invoke(app, ["diff", "--summary", "--prompts-dir", str(prompts_dir)])
+
+  assert result.exit_code == 0
+  assert "Prompt diff summary: v0.0.1 -> drafts" in result.output
+  assert "system.yaml" in result.output
+  assert "temperature: 0.2 -> 0.1" in result.output
+
+
+def test_diff_summary_command_supports_version_comparison(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  first_version = manager.release()
+  (prompts_dir / "drafts" / "system.yaml.j2").write_text(
+    "model: gpt-5.5\ntemperature: 0.1\nsystem_prompt: changed\n"
+  )
+  second_version = manager.release()
+  runner = CliRunner()
+
+  result = runner.invoke(
+    app,
+    [
+      "diff",
+      "--summary",
+      "--from",
+      first_version,
+      "--to",
+      second_version,
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+
+  assert result.exit_code == 0
+  assert f"Prompt diff summary: {first_version} -> {second_version}" in result.output
+  assert "system.yaml" in result.output
+
+
+def test_diff_from_to_requires_summary(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  PromptManager(prompts_dir).init()
+  runner = CliRunner()
+
+  result = runner.invoke(
+    app,
+    ["diff", "--from", "v0.0.1", "--to", "v0.0.2", "--prompts-dir", str(prompts_dir)],
+  )
+
+  assert result.exit_code == 1
+  assert "--from and --to require --summary" in result.output
+
+
+def test_diff_summary_reports_unknown_version(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  first_version = manager.release()
+  runner = CliRunner()
+
+  result = runner.invoke(
+    app,
+    [
+      "diff",
+      "--summary",
+      "--from",
+      first_version,
+      "--to",
+      "v9.9.9",
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+
+  assert result.exit_code == 1
+  assert "Unknown release: v9.9.9" in result.output
+
+
+def test_diff_summary_reports_render_errors(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  manager.release()
+  (prompts_dir / "drafts" / "system.yaml.j2").write_text("model: {{ missing_model }}\n")
+  runner = CliRunner()
+
+  result = runner.invoke(app, ["diff", "--summary", "--prompts-dir", str(prompts_dir)])
+
+  assert result.exit_code == 1
+  assert "ERROR" in result.output
+  assert "missing_model" in result.output
+
+
 def test_versions_command_lists_available_versions(tmp_path: Path) -> None:
   prompts_dir = tmp_path / "prompts"
   manager = PromptManager(prompts_dir)

@@ -179,6 +179,13 @@ Compare evidence with another release:
 uv run prompt evidence compare v0.0.1 v0.0.2
 ```
 
+Summarize prompt changes at a higher level:
+
+```bash
+uv run prompt diff --summary
+uv run prompt diff --summary --from v0.0.1 --to v0.0.2
+```
+
 If evidence is invalid, revoke it. Promptory records revocation without deleting
 the original evidence:
 
