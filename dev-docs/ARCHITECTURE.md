@@ -115,6 +115,7 @@ Responsibilities:
 - Normalize versions to the `vX.Y.Z` form.
 - Render drafts before writing a release.
 - Write rendered YAML files and release metadata.
+- Verify released prompt artifacts against metadata checksums.
 - Initialize release evidence storage.
 - Append lifecycle events for release creation and promotion.
 - Update the current-release pointer for promoted releases.
@@ -163,6 +164,7 @@ Responsibilities:
   comparisons.
 - Report changed managed files, character count deltas, and scalar YAML value
   changes.
+- Verify release artifact integrity against `metadata.json`.
 
 ### PromptStore
 

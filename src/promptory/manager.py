@@ -17,11 +17,13 @@ from promptory.diff import (
 from promptory.errors import PromptReleaseError
 from promptory.gates import GateResult, check_release_gates, require_release_gates
 from promptory.lint import lint_prompts
+from promptory.metadata import IntegrityResult
 from promptory.release import (
   BumpType,
   create_release,
   promote_release,
   read_current_version,
+  verify_release,
   write_current_pointer,
 )
 from promptory.render import template_name_for
@@ -96,6 +98,10 @@ class PromptManager:
     if require_gates:
       require_release_gates(spec, version)
     promote_release(spec, version)
+
+  def verify(self, version: str) -> IntegrityResult:
+    """Verify released prompt artifacts."""
+    return verify_release(self.spec(), version)
 
   def diff(self) -> str:
     """Diff current prompts against rendered drafts."""

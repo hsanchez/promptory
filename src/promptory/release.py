@@ -12,7 +12,7 @@ from typing import Any
 
 from promptory.config import PromptSpec
 from promptory.errors import PromptReleaseError
-from promptory.metadata import write_metadata
+from promptory.metadata import IntegrityResult, verify_metadata, write_metadata
 from promptory.render import render_prompts
 
 VERSION_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
@@ -197,3 +197,16 @@ def promote_release(spec: PromptSpec, version: str) -> None:
 
   write_current_pointer(spec, normalized_version)
   append_lifecycle_event(release_dir, "promoted", {"version": normalized_version})
+
+
+def verify_release(spec: PromptSpec, version: str) -> IntegrityResult:
+  """Verify released prompt artifacts against metadata checksums.
+
+  Raises:
+    PromptReleaseError: If the release or metadata cannot be checked.
+  """
+  normalized_version = normalize_version(version)
+  release_dir = spec.versions_dir / normalized_version
+  if not release_dir.is_dir():
+    raise PromptReleaseError(f"Unknown release: {normalized_version}")
+  return verify_metadata(release_dir)

@@ -131,6 +131,12 @@ Output:
 v0.0.1
 ```
 
+Verify that the release still matches its recorded hashes:
+
+```bash
+uv run prompt verify v0.0.1
+```
+
 ## Stage A Release Before Promotion
 
 Use a staged release when external checks need to inspect a rendered version

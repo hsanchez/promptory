@@ -120,6 +120,19 @@ uv run prompt promote v0.1.0 --require-gates
 
 Promptory checks attached evidence. It does not run evals or safety checks.
 
+## How do I verify release integrity?
+
+Use:
+
+```bash
+uv run prompt verify v0.1.0
+```
+
+Promptory compares each managed prompt file against the SHA-256 hash recorded in
+`metadata.json` when the release was created. Verification fails when a file is
+missing, edited, or missing a recorded checksum. It ignores `evidence/` and
+`lifecycle.jsonl`.
+
 ## Can evidence be removed?
 
 No. Evidence is immutable. Revoke invalid evidence instead:

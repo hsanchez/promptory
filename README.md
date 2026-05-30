@@ -98,6 +98,7 @@ uv run prompt diff --summary
 uv run prompt diff --summary --format markdown
 uv run prompt diff --summary --from v0.1.0 --to v0.2.0
 uv run prompt versions
+uv run prompt verify v0.1.0
 uv run prompt rollback v0.1.0
 ```
 
@@ -204,6 +205,16 @@ release_gates:
 
 `prompt gate` verifies that required evidence exists, has the required status,
 and has not been revoked. It does not run evals or safety checks.
+
+Use `prompt verify` to check whether released prompt artifacts still match the
+hashes recorded in immutable `metadata.json`:
+
+```bash
+uv run prompt verify v0.1.0
+```
+
+Verification checks managed prompt files. It ignores `evidence/`,
+`lifecycle.jsonl`, and other lifecycle support files.
 
 Prompt files must be relative `.yaml` paths. Draft templates use the same path
 with `.j2` appended, so `system.yaml` renders from `system.yaml.j2`.

@@ -32,6 +32,7 @@ from promptory.evidence import (
 )
 from promptory.gates import GateResult
 from promptory.manager import PromptManager
+from promptory.metadata import IntegrityResult
 from promptory.store import PromptStore
 
 app = typer.Typer(no_args_is_help=True)
@@ -197,6 +198,19 @@ def gate(
 
 
 @app.command()
+def verify(version: str, prompts_dir: Path = Path("prompts")) -> None:
+  """Verify release artifact integrity."""
+  try:
+    result = PromptManager(prompts_dir).verify(version)
+  except PromptReleaseError as exc:
+    console.print(f"[red]ERROR[/red] {exc}")
+    raise typer.Exit(code=1) from None
+  _print_integrity_result(result)
+  if not result.passed:
+    raise typer.Exit(code=1)
+
+
+@app.command()
 def versions(prompts_dir: Path = Path("prompts")) -> None:
   """List available prompt releases."""
   available_versions = PromptStore(prompts_dir).list_versions()
@@ -297,6 +311,15 @@ def _print_gate_result_github(result: GateResult) -> None:
     if not check.passed:
       message = f"{check.name}: {check.reason or 'release gate failed'}"
       console.print(f"::error title=Promptory gate failed::{_github_escape(message)}")
+
+
+def _print_integrity_result(result: IntegrityResult) -> None:
+  if result.passed:
+    console.print(f"[green]Release integrity verified for {result.version}.[/green]")
+    return
+  console.print(f"[red]Release integrity failed for {result.version}.[/red]")
+  for issue in result.issues:
+    console.print(f"[red]FAIL[/red] {issue.file_name}: {issue.reason}")
 
 
 def _print_evidence_list(
