@@ -75,7 +75,7 @@ exclude = [
 [tool.ruff]
 line-length = 100
 indent-width = 2
-target-version = "py314"
+target-version = "py313" # to avoid stripping `(` and `)` when having multiple exceptions
 src = ["src"]
 
 [tool.ruff.format]
