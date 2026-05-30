@@ -189,6 +189,8 @@ Responsibilities:
 
 - Run authoring commands: `init`, `draft`, `check`, `release`, `diff`, and
   `rollback`.
+- Render selected lifecycle outputs as text, JSON, Markdown, or GitHub
+  annotations for local use and CI.
 - List release versions through `PromptStore`.
 - Start the optional sidecar adapter with `prompt serve`.
 

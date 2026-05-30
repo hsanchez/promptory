@@ -61,18 +61,15 @@ artifacts = ["src/promptory/py.typed"]
 [tool.hatch.build.targets.sdist]
 exclude = [
   "/.claude",
-  "/.DS_Store",
   "/.github",
-  "/.pytest_cache",
-  "/.venv",
+  "/.rules",
   "/AGENTS.md",
   "/CLAUDE.md",
   "/CODEX.md",
   "/GEMINI.md",
-  "/MEMORY.md",
-  "/MEMORY_LOG.md",
+  "/scripts",
   "/dev-docs",
-  "/dist",
+  "/docs",
 ]
 
 [tool.ruff]

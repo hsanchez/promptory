@@ -91,9 +91,11 @@ uv run prompt gate v0.1.0
 uv run prompt promote v0.1.0 --require-gates
 uv run prompt evidence add v0.1.0 eval-results.json
 uv run prompt evidence list v0.1.0
+uv run prompt evidence list v0.1.0 --format json
 uv run prompt evidence compare v0.1.0 v0.2.0
 uv run prompt diff
 uv run prompt diff --summary
+uv run prompt diff --summary --format markdown
 uv run prompt diff --summary --from v0.1.0 --to v0.2.0
 uv run prompt versions
 uv run prompt rollback v0.1.0
@@ -124,6 +126,16 @@ uv run prompt evidence add v0.1.0 eval-results.json
 uv run prompt evidence compare v0.0.1 v0.1.0
 uv run prompt gate v0.1.0
 uv run prompt promote v0.1.0 --require-gates
+```
+
+Use structured output in CI:
+
+```bash
+uv run prompt gate v0.1.0 --format json
+uv run prompt gate v0.1.0 --format github
+uv run prompt diff --summary --format json
+uv run prompt evidence list v0.1.0 --format markdown
+uv run prompt evidence compare v0.0.1 v0.1.0 --format json
 ```
 
 Use draft to restore editable drafts from the active release:

@@ -103,6 +103,60 @@ def test_diff_summary_command_outputs_semantic_summary(tmp_path: Path) -> None:
   assert "temperature: 0.2 -> 0.1" in result.output
 
 
+def test_diff_summary_command_outputs_json(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  manager.release()
+  (prompts_dir / "drafts" / "system.yaml.j2").write_text(
+    "model: gpt-5.5\ntemperature: 0.1\nsystem_prompt: changed\n"
+  )
+  runner = CliRunner()
+
+  result = runner.invoke(
+    app,
+    ["diff", "--summary", "--format", "json", "--prompts-dir", str(prompts_dir)],
+  )
+
+  payload = json.loads(result.output)
+  assert result.exit_code == 0
+  assert payload["before_label"] == "v0.0.1"
+  assert payload["after_label"] == "drafts"
+  assert payload["files"][0]["file_name"] == "system.yaml"
+  assert payload["files"][0]["yaml_changes"][0]["path"] == "system_prompt"
+
+
+def test_diff_summary_command_outputs_markdown(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  manager.release()
+  (prompts_dir / "drafts" / "system.yaml.j2").write_text(
+    "model: gpt-5.5\ntemperature: 0.1\nsystem_prompt: changed\n"
+  )
+  runner = CliRunner()
+
+  result = runner.invoke(
+    app,
+    ["diff", "--summary", "--format", "markdown", "--prompts-dir", str(prompts_dir)],
+  )
+
+  assert result.exit_code == 0
+  assert "## Prompt Diff Summary: v0.0.1 -> drafts" in result.output
+  assert "| YAML path | Before | After |" in result.output
+
+
+def test_diff_command_rejects_structured_format_without_summary(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  PromptManager(prompts_dir).init()
+  runner = CliRunner()
+
+  result = runner.invoke(app, ["diff", "--format", "json", "--prompts-dir", str(prompts_dir)])
+
+  assert result.exit_code == 1
+  assert "--format requires --summary" in result.output
+
+
 def test_diff_summary_command_supports_version_comparison(tmp_path: Path) -> None:
   prompts_dir = tmp_path / "prompts"
   manager = PromptManager(prompts_dir)
@@ -262,6 +316,35 @@ def test_gate_command_passes_with_valid_evidence(staged_cli_release: tuple[Path,
   assert "PASS customer-support-regression" in result.output
 
 
+def test_gate_command_outputs_json(staged_cli_release: tuple[Path, Path]) -> None:
+  prompts_dir, evidence_path = staged_cli_release
+  write_cli_gate_spec(prompts_dir)
+  runner = CliRunner()
+  add_result = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      "v0.0.1",
+      str(evidence_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  assert add_result.exit_code == 0
+
+  result = runner.invoke(
+    app,
+    ["gate", "v0.0.1", "--format", "json", "--prompts-dir", str(prompts_dir)],
+  )
+
+  payload = json.loads(result.output)
+  assert result.exit_code == 0
+  assert payload["version"] == "v0.0.1"
+  assert payload["passed"] is True
+  assert payload["checks"][0]["name"] == "customer-support-regression"
+
+
 def test_gate_command_fails_when_required_evidence_is_missing(tmp_path: Path) -> None:
   prompts_dir = tmp_path / "prompts"
   manager = PromptManager(prompts_dir)
@@ -274,6 +357,37 @@ def test_gate_command_fails_when_required_evidence_is_missing(tmp_path: Path) ->
 
   assert result.exit_code == 1
   assert "FAIL customer-support-regression: required evidence missing" in result.output
+
+
+def test_gate_command_outputs_github_annotation_for_failure(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  write_cli_gate_spec(prompts_dir)
+  manager.release(staged=True)
+  runner = CliRunner()
+
+  result = runner.invoke(
+    app,
+    ["gate", "v0.0.1", "--format", "github", "--prompts-dir", str(prompts_dir)],
+  )
+
+  assert result.exit_code == 1
+  assert "::error title=Promptory gate failed::customer-support-regression" in result.output
+
+
+def test_gate_command_rejects_markdown_format(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  PromptManager(prompts_dir).init()
+  runner = CliRunner()
+
+  result = runner.invoke(
+    app,
+    ["gate", "v0.0.1", "--format", "markdown", "--prompts-dir", str(prompts_dir)],
+  )
+
+  assert result.exit_code == 1
+  assert "prompt gate does not support --format markdown" in result.output
 
 
 def test_promote_command_requires_passing_gates(staged_cli_release: tuple[Path, Path]) -> None:
@@ -365,6 +479,67 @@ def test_evidence_list_command(staged_cli_release: tuple[Path, Path]) -> None:
   assert "customer-support-regression" in result.output
 
 
+def test_evidence_list_command_outputs_json(staged_cli_release: tuple[Path, Path]) -> None:
+  prompts_dir, evidence_path = staged_cli_release
+  runner = CliRunner()
+  add_result = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      "v0.0.1",
+      str(evidence_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  assert add_result.exit_code == 0
+
+  result = runner.invoke(
+    app,
+    ["evidence", "list", "v0.0.1", "--format", "json", "--prompts-dir", str(prompts_dir)],
+  )
+
+  payload = json.loads(result.output)
+  assert result.exit_code == 0
+  assert payload["version"] == "v0.0.1"
+  assert payload["evidence"][0]["name"] == "customer-support-regression"
+
+
+def test_evidence_list_command_outputs_markdown(staged_cli_release: tuple[Path, Path]) -> None:
+  prompts_dir, evidence_path = staged_cli_release
+  runner = CliRunner()
+  add_result = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      "v0.0.1",
+      str(evidence_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  assert add_result.exit_code == 0
+
+  result = runner.invoke(
+    app,
+    [
+      "evidence",
+      "list",
+      "v0.0.1",
+      "--format",
+      "markdown",
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+
+  assert result.exit_code == 0
+  assert "## Evidence for v0.0.1" in result.output
+  assert "| Name | Kind | Status | Tool | Created |" in result.output
+
+
 def test_evidence_show_command(staged_cli_release: tuple[Path, Path]) -> None:
   prompts_dir, evidence_path = staged_cli_release
   runner = CliRunner()
@@ -442,6 +617,118 @@ def test_evidence_compare_command_outputs_changes(tmp_path: Path) -> None:
   assert f"Evidence comparison: {first_version} -> {second_version}" in result.output
   assert "status: pass -> fail" in result.output
   assert "pass_rate: 0.91 -> 0.94" in result.output
+
+
+def test_evidence_compare_command_outputs_json(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  first_version = manager.release(staged=True)
+  second_version = manager.release(staged=True)
+  before_path = tmp_path / "before.json"
+  after_path = tmp_path / "after.json"
+  write_cli_evidence(before_path, status="pass", pass_rate=0.91)
+  write_cli_evidence(after_path, status="fail", pass_rate=0.94)
+  runner = CliRunner()
+  first_add = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      first_version,
+      str(before_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  second_add = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      second_version,
+      str(after_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  assert first_add.exit_code == 0
+  assert second_add.exit_code == 0
+
+  result = runner.invoke(
+    app,
+    [
+      "evidence",
+      "compare",
+      first_version,
+      second_version,
+      "--format",
+      "json",
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+
+  payload = json.loads(result.output)
+  assert result.exit_code == 0
+  assert payload["before_version"] == first_version
+  assert payload["after_version"] == second_version
+  assert payload["changes"][0]["metrics"][0]["name"] == "pass_rate"
+
+
+def test_evidence_compare_command_outputs_markdown(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  first_version = manager.release(staged=True)
+  second_version = manager.release(staged=True)
+  before_path = tmp_path / "before.json"
+  after_path = tmp_path / "after.json"
+  write_cli_evidence(before_path, status="pass", pass_rate=0.91)
+  write_cli_evidence(after_path, status="fail", pass_rate=0.94)
+  runner = CliRunner()
+  first_add = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      first_version,
+      str(before_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  second_add = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      second_version,
+      str(after_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  assert first_add.exit_code == 0
+  assert second_add.exit_code == 0
+
+  result = runner.invoke(
+    app,
+    [
+      "evidence",
+      "compare",
+      first_version,
+      second_version,
+      "--format",
+      "markdown",
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+
+  assert result.exit_code == 0
+  assert f"## Evidence Comparison: {first_version} -> {second_version}" in result.output
+  assert "| Field | Before | After |" in result.output
 
 
 def test_evidence_compare_command_reports_no_changes(tmp_path: Path) -> None:

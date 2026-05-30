@@ -75,6 +75,25 @@ uv run prompt diff --summary --from v0.1.0 --to v0.2.0
 The summary shows changed managed files, character count deltas, and scalar YAML
 value changes. Use `prompt diff` for the full unified diff.
 
+## How do I use Promptory in CI?
+
+Use `--format json` for machine-readable output and `--format markdown` for job
+summaries:
+
+```bash
+uv run prompt diff --summary --format json
+uv run prompt evidence list v0.1.0 --format json
+uv run prompt evidence compare v0.1.0 v0.2.0 --format markdown
+```
+
+Use GitHub annotations for release gates:
+
+```bash
+uv run prompt gate v0.1.0 --format github
+```
+
+`prompt gate` still exits non-zero when gates fail.
+
 ## What are release gates?
 
 Release gates are promotion requirements declared in `promptspec.yaml`.

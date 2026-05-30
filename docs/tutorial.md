@@ -186,6 +186,14 @@ uv run prompt diff --summary
 uv run prompt diff --summary --from v0.0.1 --to v0.0.2
 ```
 
+Use structured output when CI needs to parse or publish the results:
+
+```bash
+uv run prompt gate v0.0.2 --format github
+uv run prompt diff --summary --format json
+uv run prompt evidence compare v0.0.1 v0.0.2 --format markdown
+```
+
 If evidence is invalid, revoke it. Promptory records revocation without deleting
 the original evidence:
 
