@@ -85,9 +85,28 @@ uv run prompt init
 uv run prompt check
 uv run prompt draft
 uv run prompt release --patch
+uv run prompt release --patch --staged
+uv run prompt promote v0.1.0
+uv run prompt gate v0.1.0
+uv run prompt promote v0.1.0 --require-gates
+uv run prompt evidence add v0.1.0 eval-results.json
+uv run prompt evidence list v0.1.0
+uv run prompt evidence list v0.1.0 --format json
+uv run prompt evidence compare v0.1.0 v0.2.0
 uv run prompt diff
+uv run prompt diff --summary
+uv run prompt diff --summary --format markdown
+uv run prompt diff --summary --from v0.1.0 --to v0.2.0
 uv run prompt versions
+uv run prompt verify v0.1.0
 uv run prompt rollback v0.1.0
+```
+
+`prompt versions` shows lifecycle status, gate status, and evidence counts:
+
+```text
+v0.1.0  current   gates: pass  evidence: 2
+v0.2.0  staged    gates: fail  evidence: 1 (1 revoked)
 ```
 
 Typical workflow:
@@ -95,6 +114,7 @@ Typical workflow:
 ```bash
 uv run prompt check
 uv run prompt diff
+uv run prompt diff --summary
 uv run prompt release --patch
 ```
 
@@ -103,6 +123,27 @@ Use rollback to point `current.json` at an existing release:
 ```bash
 uv run prompt versions
 uv run prompt rollback v0.1.0
+```
+
+Use staged releases when a rendered version needs review or external evidence
+before it becomes active:
+
+```bash
+uv run prompt release --patch --staged
+uv run prompt evidence add v0.1.0 eval-results.json
+uv run prompt evidence compare v0.0.1 v0.1.0
+uv run prompt gate v0.1.0
+uv run prompt promote v0.1.0 --require-gates
+```
+
+Use structured output in CI:
+
+```bash
+uv run prompt gate v0.1.0 --format json
+uv run prompt gate v0.1.0 --format github
+uv run prompt diff --summary --format json
+uv run prompt evidence list v0.1.0 --format markdown
+uv run prompt evidence compare v0.0.1 v0.1.0 --format json
 ```
 
 Use draft to restore editable drafts from the active release:
@@ -117,6 +158,22 @@ uv run prompt draft
 
 `versions/` contains rendered YAML release artifacts. Promptory creates these
 directories. Treat them as immutable after creation.
+
+Each release can contain immutable lifecycle support files:
+
+```text
+versions/v0.1.0/
+  system.yaml
+  metadata.json
+  lifecycle.jsonl
+  evidence/
+    customer-support-regression.json
+    customer-support-regression.revocation.json
+```
+
+`metadata.json` is the creation-time manifest. `lifecycle.jsonl` records
+append-only events such as staged release creation, evidence attachment, and
+promotion. `evidence/` stores immutable results produced by external tools.
 
 `current.json` points at the active release. Rollback updates this pointer.
 
@@ -142,6 +199,29 @@ files:
 required_variables: []
 max_file_bytes: 100000
 ```
+
+Add `release_gates` to require evidence before promotion:
+
+```yaml
+release_gates:
+  evidence:
+    - kind: eval
+      name: customer-support-regression
+      required_status: pass
+```
+
+`prompt gate` verifies that required evidence exists, has the required status,
+and has not been revoked. It does not run evals or safety checks.
+
+Use `prompt verify` to check whether released prompt artifacts still match the
+hashes recorded in immutable `metadata.json`:
+
+```bash
+uv run prompt verify v0.1.0
+```
+
+Verification checks managed prompt files. It ignores `evidence/`,
+`lifecycle.jsonl`, and other lifecycle support files.
 
 Prompt files must be relative `.yaml` paths. Draft templates use the same path
 with `.j2` appended, so `system.yaml` renders from `system.yaml.j2`.

@@ -4,17 +4,19 @@ from pathlib import Path
 import pytest
 
 import promptory.release as release_module
-from promptory.config import PromptSpec
+from promptory.config import PromptSpec, ReleaseGates
 from promptory.errors import PromptReleaseError
 from promptory.manager import PromptManager
 from promptory.release import (
   BumpType,
+  ReleaseVersion,
   bump_version,
   create_release,
   list_versions,
   normalize_version,
   parse_bump_type,
   parse_version,
+  promote_release,
   read_current_version,
 )
 
@@ -25,6 +27,7 @@ def make_spec(prompts_dir: Path) -> PromptSpec:
     files=("system.yaml",),
     required_variables=[],
     max_file_bytes=1000,
+    release_gates=ReleaseGates(evidence=()),
   )
 
 
@@ -32,6 +35,14 @@ def test_parse_version_accepts_prefixed_and_unprefixed_versions() -> None:
   assert parse_version("v1.2.3") == (1, 2, 3)
   assert parse_version("1.2.3") == (1, 2, 3)
   assert normalize_version("1.2.3") == "v1.2.3"
+
+
+def test_release_version_normalizes_sorts_and_bumps_versions() -> None:
+  versions = [ReleaseVersion.parse("v1.0.0"), ReleaseVersion.parse("0.10.0")]
+
+  assert str(ReleaseVersion.parse("1.2.3")) == "v1.2.3"
+  assert [str(version) for version in sorted(versions)] == ["v0.10.0", "v1.0.0"]
+  assert str(ReleaseVersion.parse("v1.2.3").bump(BumpType.MINOR)) == "v1.3.0"
 
 
 def test_parse_version_rejects_invalid_version() -> None:
@@ -89,6 +100,48 @@ def test_create_release_writes_visible_version_metadata_and_pointer(tmp_path: Pa
   assert pointer["version"] == version
 
 
+def test_create_staged_release_does_not_update_current_pointer(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+
+  version = create_release(manager.spec(), staged=True)
+
+  release_dir = prompts_dir / "versions" / version
+  lifecycle = (release_dir / "lifecycle.jsonl").read_text()
+  assert version == "v0.0.1"
+  assert (release_dir / "system.yaml").exists()
+  assert (release_dir / "evidence").is_dir()
+  assert not (prompts_dir / "current.json").exists()
+  assert '"event": "release_staged"' in lifecycle
+
+
+def test_create_release_records_lifecycle_and_promotes_by_default(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+
+  version = create_release(manager.spec())
+
+  lifecycle = (prompts_dir / "versions" / version / "lifecycle.jsonl").read_text()
+  assert '"event": "release_created"' in lifecycle
+  assert '"event": "promoted"' in lifecycle
+
+
+def test_promote_release_updates_current_pointer_and_lifecycle(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  version = create_release(manager.spec(), staged=True)
+
+  promote_release(manager.spec(), version)
+
+  pointer = json.loads((prompts_dir / "current.json").read_text())
+  lifecycle = (prompts_dir / "versions" / version / "lifecycle.jsonl").read_text()
+  assert pointer["version"] == version
+  assert '"event": "promoted"' in lifecycle
+
+
 def test_create_release_accepts_explicit_variables(tmp_path: Path) -> None:
   prompts_dir = tmp_path / "prompts"
   drafts_dir = prompts_dir / "drafts"
@@ -118,6 +171,24 @@ def test_create_release_removes_partial_release_after_non_os_error(
 
   with pytest.raises(PromptReleaseError):
     create_release(manager.spec())
+
+  assert not (prompts_dir / "versions" / "v0.0.1").exists()
+
+
+def test_create_staged_release_removes_partial_release_after_non_os_error(
+  tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+
+  def fail_metadata(release_dir: Path, version: str, files: tuple[str, ...]) -> dict[str, object]:
+    raise PromptReleaseError("metadata failed")
+
+  monkeypatch.setattr(release_module, "write_metadata", fail_metadata)
+
+  with pytest.raises(PromptReleaseError):
+    create_release(manager.spec(), staged=True)
 
   assert not (prompts_dir / "versions" / "v0.0.1").exists()
 

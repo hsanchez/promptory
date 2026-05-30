@@ -43,6 +43,31 @@ def test_store_loads_all_declared_prompts(tmp_path: Path) -> None:
   assert prompts["input_guardrail.yaml"]["policy"] == "Reject secrets."
 
 
+def test_store_loads_all_ignores_evidence_and_lifecycle_files(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  manager.release()
+  release_dir = prompts_dir / "versions" / "v0.0.1"
+  (release_dir / "evidence" / "result.json").write_text("{}\n")
+
+  prompts = PromptStore(prompts_dir).load_all()
+
+  assert set(prompts) == {"system.yaml"}
+  assert prompts["system.yaml"]["model"] == "gpt-5.5"
+
+
+def test_store_loads_specific_staged_version(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  version = manager.release(staged=True)
+
+  prompt = PromptStore(prompts_dir).load("system.yaml", version=version)
+
+  assert prompt["model"] == "gpt-5.5"
+
+
 def test_store_lists_available_versions(tmp_path: Path) -> None:
   prompts_dir = tmp_path / "prompts"
   manager = PromptManager(prompts_dir)

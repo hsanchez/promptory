@@ -15,6 +15,136 @@ artifacts created by Promptory.
 No. Treat each directory under `versions/` as immutable after creation. Make a
 new draft change and release a new version instead.
 
+## What is a staged release?
+
+A staged release is a rendered version under `versions/` that is not active yet.
+Create one with:
+
+```bash
+uv run prompt release --patch --staged
+```
+
+Promote it when it is ready:
+
+```bash
+uv run prompt promote v0.1.0
+```
+
+Promotion updates `current.json`.
+
+## What is release evidence?
+
+Evidence is immutable metadata attached to a release. External tools produce it;
+Promptory stores it with the exact rendered version it describes.
+
+```bash
+uv run prompt evidence add v0.1.0 eval-results.json
+uv run prompt evidence list v0.1.0
+uv run prompt evidence show v0.1.0 customer-support-regression
+```
+
+Promptory validates the basic evidence shape but does not run evals, call LLMs,
+manage datasets, or define metric semantics.
+
+## How do I compare evidence between releases?
+
+Use:
+
+```bash
+uv run prompt evidence compare v0.1.0 v0.2.0
+```
+
+Promptory compares attached evidence by `kind` and `name`, then shows status,
+revocation, and simple scalar metric changes. It does not decide whether one
+prompt is better.
+
+## How do I summarize prompt changes?
+
+Use:
+
+```bash
+uv run prompt diff --summary
+```
+
+Compare two released versions:
+
+```bash
+uv run prompt diff --summary --from v0.1.0 --to v0.2.0
+```
+
+The summary shows changed managed files, character count deltas, and scalar YAML
+value changes. Use `prompt diff` for the full unified diff.
+
+## How do I use Promptory in CI?
+
+Use `--format json` for machine-readable output and `--format markdown` for job
+summaries:
+
+```bash
+uv run prompt diff --summary --format json
+uv run prompt evidence list v0.1.0 --format json
+uv run prompt evidence compare v0.1.0 v0.2.0 --format markdown
+```
+
+Use GitHub annotations for release gates:
+
+```bash
+uv run prompt gate v0.1.0 --format github
+```
+
+`prompt gate` still exits non-zero when gates fail.
+
+## What are release gates?
+
+Release gates are promotion requirements declared in `promptspec.yaml`.
+
+```yaml
+release_gates:
+  evidence:
+    - kind: eval
+      name: customer-support-regression
+      required_status: pass
+```
+
+Check a version:
+
+```bash
+uv run prompt gate v0.1.0
+```
+
+Require passing gates during promotion:
+
+```bash
+uv run prompt promote v0.1.0 --require-gates
+```
+
+Promptory checks attached evidence. It does not run evals or safety checks.
+
+## How do I verify release integrity?
+
+Use:
+
+```bash
+uv run prompt verify v0.1.0
+```
+
+Promptory compares each managed prompt file against the SHA-256 hash recorded in
+`metadata.json` when the release was created. Verification fails when a file is
+missing, edited, or missing a recorded checksum. It ignores `evidence/` and
+`lifecycle.jsonl`.
+
+## Can evidence be removed?
+
+No. Evidence is immutable. Revoke invalid evidence instead:
+
+```bash
+uv run prompt evidence revoke v0.1.0 customer-support-regression \
+  --reason "Eval used stale fixtures."
+```
+
+Revocation records a new artifact and lifecycle event. It does not edit or delete
+the original evidence file.
+
 ## Why is the directory named versions instead of .vault?
 
 Release artifacts are part of the project state users should review and commit.
@@ -77,6 +207,11 @@ The CLI does not accept release variables yet.
 Rollback updates `current.json` to point at an existing release. It does not
 rewrite files inside `versions/`.
 
+## Does draft restore evidence?
+
+No. Draft recovery copies prompt text from the current release back to
+`drafts/`. Evidence remains attached to the release it describes.
+
 ## How does my app use released prompts?
 
 Use `PromptStore`:
@@ -109,6 +244,14 @@ Use the CLI:
 
 ```bash
 uv run prompt versions
+```
+
+The output shows lifecycle state, release gate status, and evidence counts:
+
+```text
+v0.1.0  archived  gates: n/a   evidence: 0
+v0.2.0  current   gates: pass  evidence: 2
+v0.3.0  staged    gates: fail  evidence: 1 (1 revoked)
 ```
 
 Or use `PromptStore`:

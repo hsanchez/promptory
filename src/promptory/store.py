@@ -84,13 +84,13 @@ class PromptStore:
       if resolved_version is None:
         raise PromptLoadError(f"No current prompt release exists: {spec.current_pointer_path}")
 
-    release_dir = spec.versions_dir / resolved_version
+    release_dir = spec.release_dir(resolved_version)
     if not release_dir.is_dir():
       raise PromptLoadError(f"Unknown prompt release: {resolved_version}")
     return resolved_version
 
   def _load_declared_file(self, spec: PromptSpec, file_name: str, version: str) -> dict[str, Any]:
-    prompt_path = spec.versions_dir / version / file_name
+    prompt_path = spec.release_dir(version) / file_name
     if not prompt_path.exists():
       raise PromptLoadError(f"Released prompt file is missing: {prompt_path}")
 

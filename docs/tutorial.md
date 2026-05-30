@@ -105,6 +105,8 @@ prompts/
     v0.0.1/
       system.yaml
       metadata.json
+      lifecycle.jsonl
+      evidence/
   current.json
 ```
 
@@ -126,8 +128,110 @@ uv run prompt versions
 Output:
 
 ```text
-v0.0.1
+v0.0.1  current  gates: n/a  evidence: 0
 ```
+
+Verify that the release still matches its recorded hashes:
+
+```bash
+uv run prompt verify v0.0.1
+```
+
+## Stage A Release Before Promotion
+
+Use a staged release when external checks need to inspect a rendered version
+before it becomes active:
+
+```bash
+uv run prompt release --patch --staged
+```
+
+Promptory writes the new version under `prompts/versions/`, but leaves
+`current.json` unchanged.
+
+Attach evidence produced by an external tool:
+
+```bash
+uv run prompt evidence add v0.0.2 customer-support-regression.json
+```
+
+Evidence documents use a small schema:
+
+```json
+{
+  "kind": "eval",
+  "name": "customer-support-regression",
+  "status": "pass",
+  "tool": "internal-eval-runner",
+  "created_at": "2026-05-24T12:00:00Z",
+  "summary": "No regressions against billing and refund scenarios.",
+  "metrics": {
+    "pass_rate": 0.94,
+    "failed_cases": 3
+  }
+}
+```
+
+Review evidence:
+
+```bash
+uv run prompt evidence list v0.0.2
+uv run prompt evidence show v0.0.2 customer-support-regression
+```
+
+Compare evidence with another release:
+
+```bash
+uv run prompt evidence compare v0.0.1 v0.0.2
+```
+
+Summarize prompt changes at a higher level:
+
+```bash
+uv run prompt diff --summary
+uv run prompt diff --summary --from v0.0.1 --to v0.0.2
+```
+
+Use structured output when CI needs to parse or publish the results:
+
+```bash
+uv run prompt gate v0.0.2 --format github
+uv run prompt diff --summary --format json
+uv run prompt evidence compare v0.0.1 v0.0.2 --format markdown
+```
+
+If evidence is invalid, revoke it. Promptory records revocation without deleting
+the original evidence:
+
+```bash
+uv run prompt evidence revoke v0.0.2 customer-support-regression \
+  --reason "Eval used stale fixtures."
+```
+
+Configure release gates when promotion should require specific evidence:
+
+```yaml
+# prompts/promptspec.yaml
+release_gates:
+  evidence:
+    - kind: eval
+      name: customer-support-regression
+      required_status: pass
+```
+
+Check gates before promotion:
+
+```bash
+uv run prompt gate v0.0.2
+```
+
+Promote the staged release when it is ready:
+
+```bash
+uv run prompt promote v0.0.2 --require-gates
+```
+
+Promotion updates `current.json`.
 
 ## Load Prompts In Application Code
 

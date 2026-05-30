@@ -19,13 +19,18 @@ flowchart TD
   Manager --> Linter[Prompt linter]
   Manager --> Renderer[Jinja renderer]
   Manager --> Release[Release writer]
+  Manager --> Gates[Release gates]
   Manager --> Diff[Diff engine]
 
   Linter --> Drafts
   Renderer --> Drafts
   Renderer --> YAML[YAML parser]
   Release --> Versions[versions/vX.Y.Z]
+  Release --> Lifecycle[lifecycle.jsonl]
+  Release --> Evidence[evidence/]
   Release --> Current[current.json]
+  Gates --> Evidence
+  Gates --> Spec
   Diff --> Drafts
   Diff --> Versions
 
@@ -46,8 +51,8 @@ and `current.json`; runtime tools read `promptspec.yaml`, `current.json`, and
 ### PromptManager
 
 `PromptManager` is the high-level authoring API. It owns project initialization,
-draft recovery from the current release, prompt checks, release creation, diffs,
-and rollback.
+draft recovery from the current release, prompt checks, release creation,
+promotion, diffs, and rollback.
 
 Responsibilities:
 
@@ -55,7 +60,11 @@ Responsibilities:
 - Load the prompt specification before authoring operations.
 - Run checks before releases through the linter.
 - Create immutable releases through the release writer.
+- Create staged releases without updating `current.json`.
+- Check release gates before promotion when requested.
+- Promote an existing release by updating `current.json`.
 - Point `current.json` at an existing release during rollback.
+- Summarize version lifecycle state, gate status, and evidence counts.
 
 `PromptManager` is allowed to write prompt lifecycle files. Runtime application
 code should use `PromptStore` instead.
@@ -98,7 +107,8 @@ renders Jinja.
 ### Release Writer
 
 The release writer owns semantic version discovery, version normalization,
-version bumps, release directory creation, `metadata.json`, and `current.json`.
+version bumps, release directory creation, `metadata.json`, lifecycle events,
+and `current.json`.
 
 Responsibilities:
 
@@ -106,8 +116,56 @@ Responsibilities:
 - Normalize versions to the `vX.Y.Z` form.
 - Render drafts before writing a release.
 - Write rendered YAML files and release metadata.
-- Update the current-release pointer.
+- Verify released prompt artifacts against metadata checksums.
+- Initialize release evidence storage.
+- Append lifecycle events for release creation and promotion.
+- Update the current-release pointer for promoted releases.
 - Remove a partially-created release directory if writing fails.
+
+### Release Evidence
+
+Release evidence stores immutable metadata produced by external tools for a
+specific release version.
+
+Responsibilities:
+
+- Validate the basic evidence schema.
+- Store evidence documents under `versions/<version>/evidence/`.
+- Reject duplicate evidence names.
+- Record revocations as new artifacts and lifecycle events.
+- Leave original evidence documents untouched.
+- Compare evidence between releases by status, revocation state, and simple
+  scalar metrics.
+
+Promptory does not run evals, call LLMs, manage datasets, or define metric
+semantics.
+
+### Release Gates
+
+Release gates check whether a release has the configured evidence required for
+promotion.
+
+Responsibilities:
+
+- Read `release_gates` from `promptspec.yaml`.
+- Match required evidence by `kind` and `name`.
+- Fail when required evidence is missing, revoked, or has the wrong status.
+- Block promotion only when the user passes `--require-gates`.
+
+Release gates inspect lifecycle metadata. They do not run external checks.
+
+### Diff Engine
+
+The diff engine compares rendered prompt content.
+
+Responsibilities:
+
+- Produce unified diffs between the current release and rendered drafts.
+- Produce semantic summaries for current-to-draft and version-to-version
+  comparisons.
+- Report changed managed files, character count deltas, and scalar YAML value
+  changes.
+- Verify release artifact integrity against `metadata.json`.
 
 ### PromptStore
 
@@ -128,12 +186,14 @@ to their LLM provider or internal prompt layer.
 ### Prompt CLI
 
 The `prompt` CLI is a thin user interface over `PromptManager`, `PromptStore`,
-and the sidecar adapter launcher.
+the sidecar adapter launcher, and CLI output renderers.
 
 Responsibilities:
 
 - Run authoring commands: `init`, `draft`, `check`, `release`, `diff`, and
   `rollback`.
+- Delegate selected lifecycle output rendering as text, JSON, Markdown, or
+  GitHub annotations for local use and CI.
 - List release versions through `PromptStore`.
 - Start the optional sidecar adapter with `prompt serve`.
 
@@ -165,7 +225,19 @@ declared file such as `system.yaml` maps to `drafts/system.yaml.j2`.
 
 `versions/` contains immutable rendered artifacts. A release directory is named
 with a normalized semantic version such as `v0.1.0` and contains rendered YAML
-plus `metadata.json`.
+plus lifecycle support files.
+
+```text
+versions/v0.1.0/
+  system.yaml
+  metadata.json
+  lifecycle.jsonl
+  evidence/
+```
+
+`metadata.json` is the immutable creation manifest. `lifecycle.jsonl` is an
+append-only event log for post-creation lifecycle events. `evidence/` contains
+immutable evidence and revocation artifacts.
 
 `current.json` points at the active release. Rollback changes the pointer instead
 of rewriting prompt artifacts.
@@ -205,6 +277,36 @@ Authoring commands can inspect or mutate lifecycle state. Git remains the durabl
 history for source changes, while Promptory writes release artifacts for runtime
 consumers.
 
+Staged releases create rendered artifacts without updating `current.json`.
+External tools can inspect that exact version and produce evidence before
+promotion:
+
+```mermaid
+sequenceDiagram
+  actor Developer
+  participant CLI as prompt CLI
+  participant Manager as PromptManager
+  participant Release as Release writer
+  participant Evidence as Evidence store
+  participant Files as prompts/
+
+  Developer->>CLI: prompt release --staged
+  CLI->>Manager: release(staged=True)
+  Manager->>Release: create staged release
+  Release->>Files: write versions/vX.Y.Z
+  Release->>Files: append release_staged
+  Developer->>CLI: prompt evidence add
+  CLI->>Evidence: validate and store evidence
+  Evidence->>Files: write evidence/*.json
+  Evidence->>Files: append evidence_added
+  Developer->>CLI: prompt promote vX.Y.Z
+  CLI->>Manager: promote(version, require_gates=True)
+  Manager->>Evidence: check release gates
+  Manager->>Release: promote release
+  Release->>Files: write current.json
+  Release->>Files: append promoted
+```
+
 ## Runtime Flow
 
 ```mermaid
@@ -238,6 +340,14 @@ version, and loads rendered YAML from a known release directory.
 - Promptory writes `versions/` and `current.json`; developers edit `drafts/`.
 - Runtime code reads `current.json` and `versions/<version>/`; runtime code does
   not read `drafts/`.
+- Staged releases exist in `versions/` without being pointed to by
+  `current.json`.
+- Release gates use configured evidence requirements to decide whether a staged
+  release can be promoted with `--require-gates`.
+- `metadata.json` is creation-time metadata.
+- `lifecycle.jsonl` is append-only lifecycle history.
+- Evidence documents are immutable; revocation adds a new artifact and event.
+- Runtime loading ignores `metadata.json`, `lifecycle.jsonl`, and `evidence/`.
 
 ## Release Flow
 
@@ -245,8 +355,10 @@ version, and loads rendered YAML from a known release directory.
 2. Render every draft template with Jinja.
 3. Validate rendered YAML.
 4. Create the next semantic version directory under `versions/`.
-5. Write rendered YAML files and `metadata.json`.
-6. Update `current.json` to point at the new release.
+5. Write rendered YAML files, `metadata.json`, `lifecycle.jsonl`, and
+   `evidence/`.
+6. Update `current.json` to point at the new release unless the release is
+   staged.
 
 Release-time variables flow through `PromptManager.release(variables=...)`.
 Rendered releases contain resolved YAML; runtime loading does not render Jinja.
