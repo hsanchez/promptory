@@ -67,7 +67,7 @@ def diff_current_against_drafts(spec: PromptSpec) -> str:
   rendered = render_prompts(spec)
   chunks: list[str] = []
   current_version = read_current_version(spec)
-  current_dir = spec.versions_dir / current_version if current_version else None
+  current_dir = spec.release_dir(current_version) if current_version else None
 
   for file_name, draft_content in rendered.items():
     current_path = current_dir / file_name if current_dir is not None else None
@@ -91,7 +91,7 @@ def summarize_current_against_drafts(spec: PromptSpec) -> PromptDiffSummary:
   """Return a semantic summary between the current release and rendered drafts."""
   rendered = render_prompts(spec)
   current_version = read_current_version(spec)
-  current_dir = spec.versions_dir / current_version if current_version else None
+  current_dir = spec.release_dir(current_version) if current_version else None
   files: list[FileDiffSummary] = []
 
   for file_name, draft_content in rendered.items():
@@ -116,8 +116,8 @@ def summarize_versions(
   """Return a semantic summary between two released versions."""
   before = normalize_version(before_version)
   after = normalize_version(after_version)
-  before_dir = spec.versions_dir / before
-  after_dir = spec.versions_dir / after
+  before_dir = spec.release_dir(before)
+  after_dir = spec.release_dir(after)
   if not before_dir.is_dir():
     raise PromptReleaseError(f"Unknown release: {before}")
   if not after_dir.is_dir():

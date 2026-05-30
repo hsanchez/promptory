@@ -9,6 +9,7 @@ from promptory.errors import PromptReleaseError
 from promptory.manager import PromptManager
 from promptory.release import (
   BumpType,
+  ReleaseVersion,
   bump_version,
   create_release,
   list_versions,
@@ -34,6 +35,14 @@ def test_parse_version_accepts_prefixed_and_unprefixed_versions() -> None:
   assert parse_version("v1.2.3") == (1, 2, 3)
   assert parse_version("1.2.3") == (1, 2, 3)
   assert normalize_version("1.2.3") == "v1.2.3"
+
+
+def test_release_version_normalizes_sorts_and_bumps_versions() -> None:
+  versions = [ReleaseVersion.parse("v1.0.0"), ReleaseVersion.parse("0.10.0")]
+
+  assert str(ReleaseVersion.parse("1.2.3")) == "v1.2.3"
+  assert [str(version) for version in sorted(versions)] == ["v0.10.0", "v1.0.0"]
+  assert str(ReleaseVersion.parse("v1.2.3").bump(BumpType.MINOR)) == "v1.3.0"
 
 
 def test_parse_version_rejects_invalid_version() -> None:

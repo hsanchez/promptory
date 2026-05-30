@@ -203,7 +203,7 @@ def _release_dir(spec: PromptSpec, version: str) -> Path:
     normalized_version = normalize_version(version)
   except PromptReleaseError as exc:
     raise PromptEvidenceError(f"Invalid release version: {version}") from exc
-  release_dir = spec.versions_dir / normalized_version
+  release_dir = spec.release_dir(normalized_version)
   if not release_dir.is_dir():
     raise PromptEvidenceError(f"Unknown release: {normalized_version}")
   return release_dir

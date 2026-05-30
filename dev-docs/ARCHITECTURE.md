@@ -186,14 +186,14 @@ to their LLM provider or internal prompt layer.
 ### Prompt CLI
 
 The `prompt` CLI is a thin user interface over `PromptManager`, `PromptStore`,
-and the sidecar adapter launcher.
+the sidecar adapter launcher, and CLI output renderers.
 
 Responsibilities:
 
 - Run authoring commands: `init`, `draft`, `check`, `release`, `diff`, and
   `rollback`.
-- Render selected lifecycle outputs as text, JSON, Markdown, or GitHub
-  annotations for local use and CI.
+- Delegate selected lifecycle output rendering as text, JSON, Markdown, or
+  GitHub annotations for local use and CI.
 - List release versions through `PromptStore`.
 - Start the optional sidecar adapter with `prompt serve`.
 

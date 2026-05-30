@@ -69,6 +69,18 @@ class PromptSpec:
   def spec_path(self) -> Path:
     return self.prompts_dir / "promptspec.yaml"
 
+  def release_dir(self, version: str) -> Path:
+    return self.versions_dir / version
+
+  def release_metadata_path(self, version: str) -> Path:
+    return self.release_dir(version) / "metadata.json"
+
+  def release_lifecycle_path(self, version: str) -> Path:
+    return self.release_dir(version) / "lifecycle.jsonl"
+
+  def release_evidence_dir(self, version: str) -> Path:
+    return self.release_dir(version) / "evidence"
+
 
 def default_spec() -> dict[str, object]:
   """Return a default promptspec document."""

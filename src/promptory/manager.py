@@ -86,7 +86,7 @@ class PromptManager:
     current_version = read_current_version(spec)
     if current_version is None:
       raise PromptReleaseError("No current release exists")
-    current_dir = spec.versions_dir / current_version
+    current_dir = spec.release_dir(current_version)
     if not current_dir.is_dir():
       raise PromptReleaseError(f"Unknown release: {current_version}")
 
@@ -157,7 +157,7 @@ class PromptManager:
 
 
 def _version_summary(spec: PromptSpec, version: str, current_version: str | None) -> VersionSummary:
-  release_dir = spec.versions_dir / version
+  release_dir = spec.release_dir(version)
   evidence = list_evidence(spec, version)
   gate_status = _gate_status(spec, version)
   return VersionSummary(

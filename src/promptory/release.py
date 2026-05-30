@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -26,22 +27,53 @@ class BumpType(StrEnum):
   PATCH = "patch"
 
 
+@dataclass(frozen=True, order=True)
+class ReleaseVersion:
+  """Normalized semantic release version."""
+
+  major: int
+  minor: int
+  patch: int
+
+  @classmethod
+  def parse(cls, version: str) -> ReleaseVersion:
+    """Parse semantic version.
+
+    Raises:
+      PromptReleaseError: If version is not a semantic version.
+    """
+    match = VERSION_RE.match(version)
+    if match is None:
+      raise PromptReleaseError(f"Invalid version: {version}")
+    major, minor, patch = match.groups()
+    return cls(major=int(major), minor=int(minor), patch=int(patch))
+
+  def __str__(self) -> str:
+    return f"v{self.major}.{self.minor}.{self.patch}"
+
+  def bump(self, bump: BumpType) -> ReleaseVersion:
+    if bump is BumpType.MAJOR:
+      return ReleaseVersion(self.major + 1, 0, 0)
+    if bump is BumpType.MINOR:
+      return ReleaseVersion(self.major, self.minor + 1, 0)
+    if bump is BumpType.PATCH:
+      return ReleaseVersion(self.major, self.minor, self.patch + 1)
+    raise PromptReleaseError(f"Unknown bump type: {bump!r}")
+
+
 def parse_version(version: str) -> tuple[int, int, int]:
   """Parse semantic version.
 
   Raises:
     PromptReleaseError: If version is not a semantic version.
   """
-  match = VERSION_RE.match(version)
-  if match is None:
-    raise PromptReleaseError(f"Invalid version: {version}")
-  major, minor, patch = match.groups()
-  return int(major), int(minor), int(patch)
+  parsed = ReleaseVersion.parse(version)
+  return parsed.major, parsed.minor, parsed.patch
 
 
 def format_version(version: tuple[int, int, int]) -> str:
   """Format semantic version with v prefix."""
-  return f"v{version[0]}.{version[1]}.{version[2]}"
+  return str(ReleaseVersion(*version))
 
 
 def normalize_version(version: str) -> str:
@@ -50,7 +82,7 @@ def normalize_version(version: str) -> str:
   Raises:
     PromptReleaseError: If version is not a semantic version.
   """
-  return format_version(parse_version(version))
+  return str(ReleaseVersion.parse(version))
 
 
 def latest_version(spec: PromptSpec) -> str | None:
@@ -67,19 +99,12 @@ def list_versions(spec: PromptSpec) -> list[str]:
   for child in spec.versions_dir.iterdir():
     if child.is_dir() and VERSION_RE.match(child.name):
       versions.append(normalize_version(child.name))
-  return sorted(versions, key=parse_version)
+  return [str(version) for version in sorted(ReleaseVersion.parse(item) for item in versions)]
 
 
 def bump_version(current: str | None, bump: BumpType) -> str:
   """Bump a semantic version."""
-  major, minor, patch = parse_version(current or "v0.0.0")
-  if bump is BumpType.MAJOR:
-    return format_version((major + 1, 0, 0))
-  if bump is BumpType.MINOR:
-    return format_version((major, minor + 1, 0))
-  if bump is BumpType.PATCH:
-    return format_version((major, minor, patch + 1))
-  raise PromptReleaseError(f"Unknown bump type: {bump!r}")
+  return str(ReleaseVersion.parse(current or "v0.0.0").bump(bump))
 
 
 def parse_bump_type(bump: str | BumpType) -> BumpType:
@@ -103,7 +128,7 @@ def write_current_pointer(spec: PromptSpec, version: str) -> None:
     PromptReleaseError: If the release does not exist.
   """
   normalized_version = normalize_version(version)
-  release_dir = spec.versions_dir / normalized_version
+  release_dir = spec.release_dir(normalized_version)
   if not release_dir.is_dir():
     raise PromptReleaseError(f"Unknown release: {normalized_version}")
 
@@ -154,7 +179,7 @@ def create_release(
     PromptReleaseError: If the release cannot be created.
   """
   version = bump_version(latest_version(spec), parse_bump_type(bump))
-  release_dir = spec.versions_dir / version
+  release_dir = spec.release_dir(version)
 
   if release_dir.exists():
     raise PromptReleaseError(f"Release already exists: {release_dir}")
@@ -193,7 +218,7 @@ def promote_release(spec: PromptSpec, version: str) -> None:
     PromptReleaseError: If the release does not exist.
   """
   normalized_version = normalize_version(version)
-  release_dir = spec.versions_dir / normalized_version
+  release_dir = spec.release_dir(normalized_version)
 
   write_current_pointer(spec, normalized_version)
   append_lifecycle_event(release_dir, "promoted", {"version": normalized_version})
@@ -206,7 +231,7 @@ def verify_release(spec: PromptSpec, version: str) -> IntegrityResult:
     PromptReleaseError: If the release or metadata cannot be checked.
   """
   normalized_version = normalize_version(version)
-  release_dir = spec.versions_dir / normalized_version
+  release_dir = spec.release_dir(normalized_version)
   if not release_dir.is_dir():
     raise PromptReleaseError(f"Unknown release: {normalized_version}")
   return verify_metadata(release_dir)
