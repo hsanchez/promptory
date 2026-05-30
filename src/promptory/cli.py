@@ -31,9 +31,8 @@ from promptory.evidence import (
   show_evidence,
 )
 from promptory.gates import GateResult
-from promptory.manager import PromptManager
+from promptory.manager import PromptManager, VersionSummary
 from promptory.metadata import IntegrityResult
-from promptory.store import PromptStore
 
 app = typer.Typer(no_args_is_help=True)
 evidence_app = typer.Typer(no_args_is_help=True)
@@ -213,12 +212,16 @@ def verify(version: str, prompts_dir: Path = Path("prompts")) -> None:
 @app.command()
 def versions(prompts_dir: Path = Path("prompts")) -> None:
   """List available prompt releases."""
-  available_versions = PromptStore(prompts_dir).list_versions()
-  if not available_versions:
+  try:
+    summaries = PromptManager(prompts_dir).version_summaries()
+  except PromptReleaseError as exc:
+    console.print(f"[red]ERROR[/red] {exc}")
+    raise typer.Exit(code=1) from None
+  if not summaries:
     console.print("[yellow]No releases found.[/yellow]")
     return
-  for version in available_versions:
-    console.print(version)
+  for summary in summaries:
+    console.print(_format_version_summary(summary))
 
 
 @evidence_app.command("add")
@@ -320,6 +323,15 @@ def _print_integrity_result(result: IntegrityResult) -> None:
   console.print(f"[red]Release integrity failed for {result.version}.[/red]")
   for issue in result.issues:
     console.print(f"[red]FAIL[/red] {issue.file_name}: {issue.reason}")
+
+
+def _format_version_summary(summary: VersionSummary) -> str:
+  evidence = f"{summary.evidence_count}"
+  if summary.revoked_evidence_count:
+    evidence = f"{evidence} ({summary.revoked_evidence_count} revoked)"
+  return (
+    f"{summary.version}  {summary.state.value}  gates: {summary.gate_status}  evidence: {evidence}"
+  )
 
 
 def _print_evidence_list(

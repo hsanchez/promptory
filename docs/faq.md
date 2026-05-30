@@ -246,6 +246,14 @@ Use the CLI:
 uv run prompt versions
 ```
 
+The output shows lifecycle state, release gate status, and evidence counts:
+
+```text
+v0.1.0  archived  gates: n/a   evidence: 0
+v0.2.0  current   gates: pass  evidence: 2
+v0.3.0  staged    gates: fail  evidence: 1 (1 revoked)
+```
+
 Or use `PromptStore`:
 
 ```python

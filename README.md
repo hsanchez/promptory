@@ -102,6 +102,13 @@ uv run prompt verify v0.1.0
 uv run prompt rollback v0.1.0
 ```
 
+`prompt versions` shows lifecycle status, gate status, and evidence counts:
+
+```text
+v0.1.0  current   gates: pass  evidence: 2
+v0.2.0  staged    gates: fail  evidence: 1 (1 revoked)
+```
+
 Typical workflow:
 
 ```bash

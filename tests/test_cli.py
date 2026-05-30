@@ -247,12 +247,81 @@ def test_versions_command_lists_available_versions(tmp_path: Path) -> None:
   manager.init()
   manager.release()
   manager.release()
+  manager.release(staged=True)
   runner = CliRunner()
 
   result = runner.invoke(app, ["versions", "--prompts-dir", str(prompts_dir)])
 
   assert result.exit_code == 0
-  assert result.output.splitlines() == ["v0.0.1", "v0.0.2"]
+  assert result.output.splitlines() == [
+    "v0.0.1  archived  gates: n/a  evidence: 0",
+    "v0.0.2  current  gates: n/a  evidence: 0",
+    "v0.0.3  staged  gates: n/a  evidence: 0",
+  ]
+
+
+def test_versions_command_shows_gate_status_and_evidence_count(
+  staged_cli_release: tuple[Path, Path],
+) -> None:
+  prompts_dir, evidence_path = staged_cli_release
+  write_cli_gate_spec(prompts_dir)
+  runner = CliRunner()
+  add_result = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      "v0.0.1",
+      str(evidence_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  assert add_result.exit_code == 0
+
+  result = runner.invoke(app, ["versions", "--prompts-dir", str(prompts_dir)])
+
+  assert result.exit_code == 0
+  assert result.output.strip() == "v0.0.1  staged  gates: pass  evidence: 1"
+
+
+def test_versions_command_counts_revoked_evidence(
+  staged_cli_release: tuple[Path, Path],
+) -> None:
+  prompts_dir, evidence_path = staged_cli_release
+  write_cli_gate_spec(prompts_dir)
+  runner = CliRunner()
+  add_result = runner.invoke(
+    app,
+    [
+      "evidence",
+      "add",
+      "v0.0.1",
+      str(evidence_path),
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  revoke_result = runner.invoke(
+    app,
+    [
+      "evidence",
+      "revoke",
+      "v0.0.1",
+      "customer-support-regression",
+      "--reason",
+      "Fixture set was stale.",
+      "--prompts-dir",
+      str(prompts_dir),
+    ],
+  )
+  assert add_result.exit_code == 0
+  assert revoke_result.exit_code == 0
+
+  result = runner.invoke(app, ["versions", "--prompts-dir", str(prompts_dir)])
+
+  assert result.exit_code == 0
+  assert result.output.strip() == "v0.0.1  staged  gates: fail  evidence: 1 (1 revoked)"
 
 
 def test_versions_command_reports_when_no_releases_exist(tmp_path: Path) -> None:
@@ -264,6 +333,21 @@ def test_versions_command_reports_when_no_releases_exist(tmp_path: Path) -> None
 
   assert result.exit_code == 0
   assert result.output.strip() == "No releases found."
+
+
+def test_versions_command_reports_invalid_current_pointer(tmp_path: Path) -> None:
+  prompts_dir = tmp_path / "prompts"
+  manager = PromptManager(prompts_dir)
+  manager.init()
+  manager.release()
+  (prompts_dir / "current.json").write_text("[]\n")
+  runner = CliRunner()
+
+  result = runner.invoke(app, ["versions", "--prompts-dir", str(prompts_dir)])
+
+  assert result.exit_code == 1
+  assert "ERROR" in result.output
+  assert "Invalid current pointer" in result.output
 
 
 def test_release_command_creates_staged_release_without_current_pointer(tmp_path: Path) -> None:

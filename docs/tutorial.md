@@ -128,7 +128,7 @@ uv run prompt versions
 Output:
 
 ```text
-v0.0.1
+v0.0.1  current  gates: n/a  evidence: 0
 ```
 
 Verify that the release still matches its recorded hashes:

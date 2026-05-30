@@ -64,6 +64,7 @@ Responsibilities:
 - Check release gates before promotion when requested.
 - Promote an existing release by updating `current.json`.
 - Point `current.json` at an existing release during rollback.
+- Summarize version lifecycle state, gate status, and evidence counts.
 
 `PromptManager` is allowed to write prompt lifecycle files. Runtime application
 code should use `PromptStore` instead.

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -14,19 +17,40 @@ from promptory.diff import (
   summarize_current_against_drafts,
   summarize_versions,
 )
-from promptory.errors import PromptReleaseError
+from promptory.errors import PromptEvidenceError, PromptGateError, PromptReleaseError
+from promptory.evidence import list_evidence
 from promptory.gates import GateResult, check_release_gates, require_release_gates
 from promptory.lint import lint_prompts
 from promptory.metadata import IntegrityResult
 from promptory.release import (
   BumpType,
   create_release,
+  list_versions,
   promote_release,
   read_current_version,
   verify_release,
   write_current_pointer,
 )
 from promptory.render import template_name_for
+
+
+class VersionState(StrEnum):
+  """Visible lifecycle state for a release version."""
+
+  STAGED = "staged"
+  CURRENT = "current"
+  ARCHIVED = "archived"
+
+
+@dataclass(frozen=True)
+class VersionSummary:
+  """CLI summary for one release version."""
+
+  version: str
+  state: VersionState
+  gate_status: str
+  evidence_count: int
+  revoked_evidence_count: int
 
 
 class PromptManager:
@@ -103,6 +127,13 @@ class PromptManager:
     """Verify released prompt artifacts."""
     return verify_release(self.spec(), version)
 
+  def version_summaries(self) -> list[VersionSummary]:
+    """Summarize available release versions."""
+    spec = self.spec()
+    versions = list_versions(spec)
+    current_version = read_current_version(spec)
+    return [_version_summary(spec, version, current_version) for version in versions]
+
   def diff(self) -> str:
     """Diff current prompts against rendered drafts."""
     return diff_current_against_drafts(self.spec())
@@ -123,3 +154,53 @@ class PromptManager:
   def rollback(self, version: str) -> None:
     """Point current.json at an existing release."""
     write_current_pointer(self.spec(), version)
+
+
+def _version_summary(spec: PromptSpec, version: str, current_version: str | None) -> VersionSummary:
+  release_dir = spec.versions_dir / version
+  evidence = list_evidence(spec, version)
+  gate_status = _gate_status(spec, version)
+  return VersionSummary(
+    version=version,
+    state=_version_state(release_dir, version, current_version),
+    gate_status=gate_status,
+    evidence_count=len(evidence),
+    revoked_evidence_count=sum(1 for item in evidence if item.revoked),
+  )
+
+
+def _version_state(release_dir: Path, version: str, current_version: str | None) -> VersionState:
+  if version == current_version:
+    return VersionState.CURRENT
+  events = _lifecycle_events(release_dir)
+  if "release_staged" in events and "promoted" not in events:
+    return VersionState.STAGED
+  return VersionState.ARCHIVED
+
+
+def _lifecycle_events(release_dir: Path) -> set[str]:
+  lifecycle_path = release_dir / "lifecycle.jsonl"
+  if not lifecycle_path.exists():
+    return set()
+
+  events: set[str] = set()
+  for line in lifecycle_path.read_text().splitlines():
+    if not line:
+      continue
+    try:
+      event = json.loads(line)
+    except json.JSONDecodeError as exc:
+      raise PromptReleaseError(f"Invalid lifecycle event: {lifecycle_path}") from exc
+    if isinstance(event, dict) and isinstance(event.get("event"), str):
+      events.add(event["event"])
+  return events
+
+
+def _gate_status(spec: PromptSpec, version: str) -> str:
+  if not spec.release_gates.evidence:
+    return "n/a"
+  try:
+    result = check_release_gates(spec, version)
+  except (PromptEvidenceError, PromptGateError):
+    return "error"
+  return "pass" if result.passed else "fail"
